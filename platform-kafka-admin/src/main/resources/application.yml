@@ -1,0 +1,12 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /platform
+  cors: '*'
+
+spring:
+  application:
+    name: platform-kafka-admin
+    
+  kafka:
+    bootstrap-servers: 20.85.127.35:9092
