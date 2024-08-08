@@ -22,4 +22,15 @@ public class adminPartitionsKafka {
     public Map<String, Object> getPartitionDetails(@PathVariable String topic) throws ExecutionException, InterruptedException {
         return kafkaService.getPartitionDetails(topic);
     }
+	
+	@GetMapping("/topics/{topic}/partitions/count")
+    public int getPartitionCount(@PathVariable String topic) throws ExecutionException, InterruptedException {
+        return kafkaService.getPartitionCount(topic);
+    }
+	
+	@GetMapping("/topics/{topic}/partitions/search/{count}")
+    public Map<String, Object> getPartitionSearch(@PathVariable String topic,@PathVariable int count) throws ExecutionException, InterruptedException {
+        return kafkaService.getPartitionSearch(topic,count);
+    }
+	
 }
