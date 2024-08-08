@@ -25,11 +25,6 @@ public class adminTopicsKafka {
     public Set<String> listTopics() throws ExecutionException, InterruptedException {
         return kafkaService.listTopics();
     }
-
-    @GetMapping("/topics/{topicName}/partitions")
-    public Map<String, Object> listPartitions(@PathVariable String topicName) throws ExecutionException, InterruptedException {
-        return kafkaService.describeTopics(Set.of(topicName));
-    }
     
     @GetMapping("/topics/count")
     public int countTopics() throws ExecutionException, InterruptedException {
