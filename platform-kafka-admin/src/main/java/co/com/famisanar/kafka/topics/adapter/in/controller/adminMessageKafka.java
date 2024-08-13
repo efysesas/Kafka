@@ -8,12 +8,16 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import co.com.famisanar.kafka.shared.annotations.CustomRestController;
+import co.com.famisanar.kafka.topics.adapter.in.dto.SendMessage;
 import co.com.famisanar.kafka.topics.application.services.KafkaMessageService;
 
 @CustomRestController
@@ -28,7 +32,7 @@ public class adminMessageKafka {
             @PathVariable String topic,
             @PathVariable int partition,
             @RequestParam int offset,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam int limit) {
         List<ConsumerRecord<String, String>> records = kafkaMessageService.getMessages(topic, partition, offset, limit);
         return records.stream().map(record -> {
             Map<String, Object> message = new HashMap<>();
@@ -59,6 +63,25 @@ public class adminMessageKafka {
             message.put("timestamp", record.timestamp());
             return message;
         }).collect(Collectors.toList());
+    }
+    
+    @GetMapping("/findMessages")
+    public List<Map<String, Object>> getMessagesByValue(@RequestBody SendMessage sendMessage) {
+        List<ConsumerRecord<String, String>> messages = kafkaMessageService.getMessagesByValue(sendMessage);
+        return messages.stream().map(record -> {
+            Map<String, Object> message = new HashMap<>();
+            message.put("offset", record.offset());
+            message.put("key", record.key());
+            message.put("value", record.value());
+            message.put("partition", record.partition());
+            message.put("timestamp", record.timestamp());
+            return message;
+        }).collect(Collectors.toList());
+    }
+    
+    @PostMapping(value = "/sendMessage")
+    public ResponseEntity<String> sendMessage(@RequestBody SendMessage sendMessage) {
+        return kafkaMessageService.send(sendMessage) ?  ResponseEntity.ok("Mensaje enviado ") :  ResponseEntity.internalServerError().body("No se pudo enviar el mensaje");
     }
     
 }

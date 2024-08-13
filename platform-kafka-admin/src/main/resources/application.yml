@@ -10,3 +10,14 @@ spring:
     
   kafka:
     bootstrap-servers: 20.85.127.35:9092
+    
+  jpa:
+    hibernate.ddl-auto: update
+    show-sql: true
+    database: oracle
+    database-platform: org.hibernate.dialect.OracleDialect
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+    url: jdbc:oracle:thin:@//192.168.0.22:1521/wanted
+    password: Efyse_20Dev
+    username: wanteddev

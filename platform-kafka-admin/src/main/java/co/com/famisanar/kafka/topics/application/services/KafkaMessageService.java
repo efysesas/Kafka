@@ -7,9 +7,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+import java.util.UUID;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -18,25 +17,41 @@ import org.apache.kafka.common.TopicPartition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import co.com.famisanar.kafka.topics.adapter.in.dto.SendMessage;
+import co.com.famisanar.kafka.topics.adapter.out.entity.MessageEntity;
+import co.com.famisanar.kafka.topics.application.ports.out.IAdminKafkaPersistenceAdapter;
+import jakarta.servlet.ServletContext;
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class KafkaMessageService {
 	
 	@Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 	
+	private KafkaTemplate<String, String> kafkaTemplate;
+	
+	@Autowired
+    public KafkaMessageService(KafkaTemplate<String, String> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
+    }
+	
+	@Autowired
+    public ServletContext servletContext;
+	
 	@Autowired
     private ConsumerFactory<String, String> consumerFactory;
 	
+	@Autowired
+    private IAdminKafkaPersistenceAdapter departmentPersistenceAdapter;
+	
 	public List<ConsumerRecord<String, String>> getMessages(String topic, int partition, int offset, int limit) {
-        Properties props = new Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "backend-architecture");//PENDIENTE DE LISTAR TAMBIEN LOS GROUP_ID
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
-
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        
+		try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
         TopicPartition topicPartition = new TopicPartition(topic, partition);
         consumer.assign(Collections.singletonList(topicPartition));
         consumer.seek(topicPartition, offset);
@@ -45,6 +60,8 @@ public class KafkaMessageService {
         consumer.close();
 
         return records.subList(0, Math.min(records.size(), limit));
+		}
+		
     }
 	
 	public List<ConsumerRecord<String, String>> getMessagesByDateRange(String topic, int partition, Instant startTime, Instant endTime) {
@@ -79,6 +96,56 @@ public class KafkaMessageService {
             }
 
             return records;
+        }
+    }
+	
+	public List<ConsumerRecord<String, String>> getMessagesByValue(SendMessage sendMessage) {
+
+        try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
+        	log.info(sendMessage.getTopic()+" - "+sendMessage.getPartition());
+			TopicPartition topicPartition = new TopicPartition(sendMessage.getTopic(), sendMessage.getPartition());
+			consumer.assign(Collections.singletonList(topicPartition));
+			consumer.seek(topicPartition, sendMessage.getOffset());
+			
+			    List<ConsumerRecord<String, String>> records = new ArrayList<>();
+
+			    while (true) {
+	                ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofSeconds(1));
+
+	                for (ConsumerRecord<String, String> record : consumerRecords) {
+	                	
+	                	String value = record.value().toLowerCase();
+	                    if (value.contains(sendMessage.getMessage())) {
+	                        records.add(record);
+	                    }
+	                    
+	                }
+
+	                if (consumerRecords.isEmpty()) {
+	                    break;
+	                }
+	            }
+
+			    return records;
+		}
+    }
+	
+	public boolean send(SendMessage sendMessage) {
+        String idMessage = UUID.randomUUID().toString();
+        try {
+            kafkaTemplate.send(sendMessage.getTopic(), sendMessage.getPartition(), idMessage, sendMessage.getMessage()).get(); // Espera a que el mensaje se envíe
+            return true;
+        } catch (Exception e) {
+            MessageEntity messageEntity = new MessageEntity();
+            messageEntity.setMessageId(idMessage);
+            messageEntity.setAttempts(1);
+            messageEntity.setTopicKafka(sendMessage.getTopic());
+            messageEntity.setMessage(sendMessage.getMessage());
+            messageEntity.setApplication(servletContext.getContextPath());
+            messageEntity.setStatus("PENDING");
+            departmentPersistenceAdapter.saveMessageError(messageEntity);
+            log.error("ERROR ENVIANDO MENSAJE", e);
+            return false;
         }
     }
 	

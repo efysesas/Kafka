@@ -33,6 +33,25 @@ public class KafkaTopicsService {
     public KafkaTopicsService(KafkaAdmin kafkaAdmin) {
         this.adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
     }
+    
+    public Map<String, TopicDescription> listTopicDetails() throws ExecutionException, InterruptedException {
+        // Crear AdminClient usando la configuración de KafkaAdmin
+        AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
+
+        // Obtener la lista de nombres de tópicos
+        ListTopicsResult listTopicsResult = adminClient.listTopics();
+        Set<String> topicNames = listTopicsResult.names().get();
+
+        // Obtener detalles de los tópicos
+        DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(topicNames);
+        @SuppressWarnings("deprecation")
+		Map<String, TopicDescription> topicDescriptions = describeTopicsResult.all().get();
+
+        // Cerrar AdminClient
+        adminClient.close();
+
+        return topicDescriptions;
+    }
 
     public Set<String> listTopics() throws ExecutionException, InterruptedException {
         AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
