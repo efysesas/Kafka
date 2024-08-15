@@ -45,13 +45,42 @@ public class KafkaConsumersService {
         return groupListings.size();
     }
     
-    public List<String> searchConsumerGroups(String searchTerm) throws ExecutionException, InterruptedException {
-        ListConsumerGroupsResult groupsResult = adminClient.listConsumerGroups();
-        List<ConsumerGroupListing> groupListings = (List<ConsumerGroupListing>) groupsResult.all().get();
-        return groupListings.stream()
-                .map(ConsumerGroupListing::groupId)
-                .filter(groupId -> groupId.contains(searchTerm))
-                .collect(Collectors.toList());
+    public Map<String, Map<String, Object>> searchConsumerGroups(String searchTerm) throws ExecutionException, InterruptedException {
+        try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
+            
+            ListConsumerGroupsResult groupsResult = adminClient.listConsumerGroups();
+            Set<String> consumerGroupIds = groupsResult.all().get().stream()
+                    .map(ConsumerGroupListing::groupId)
+                    .filter(groupId -> groupId.contains(searchTerm))
+                    .collect(Collectors.toSet());
+
+            Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient.describeConsumerGroups(consumerGroupIds).all().get();
+
+            Map<String, Map<String, Object>> consumerGroupDetails = consumerGroupDescriptions.entrySet().stream()
+                    .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> {
+                            Map<String, Object> details = new HashMap<>();
+                            ConsumerGroupDescription description = entry.getValue();
+
+                            Set<String> topics = description.members().stream()
+                                    .flatMap(member -> member.assignment().topicPartitions().stream())
+                                    .map(tp -> tp.topic())
+                                    .collect(Collectors.toSet());
+                            details.put("topics", topics);
+
+                            details.put("active", !description.members().isEmpty());
+
+                            details.put("memberCount", description.members().size());
+
+                            return details;
+                        }
+                    ));
+
+            return consumerGroupDetails;
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException("Error fetching Kafka consumer groups details", e);
+        }
     }
     
     public Map<String, Map<String, Object>> getConsumersAndTopics() {

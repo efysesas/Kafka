@@ -6,7 +6,7 @@ import lombok.Data;
 
 //@Entity
 @Data
-@Table(name = "LOGIN_CONTROL")
+//@Table(name = "LOGIN_CONTROL")
 public class LoginEntity {
 	
 }

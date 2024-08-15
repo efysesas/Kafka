@@ -20,10 +20,10 @@ public class AdminTopicsKafka {
 	
 	@Autowired
     private KafkaTopicsService kafkaService;
-
+    
     @GetMapping("/topics")
-    public Set<String> listTopics() throws ExecutionException, InterruptedException {
-        return kafkaService.listTopics();
+    public Map<String, Map<String, Object>> getTopicDetails() throws ExecutionException, InterruptedException {
+        return kafkaService.getTopicDetails();
     }
     
     @GetMapping("/topics/count")
@@ -36,14 +36,9 @@ public class AdminTopicsKafka {
         return kafkaService.searchTopics(searchTerm);
     }
     
-    @GetMapping("/{topicName}/details")
+    @GetMapping("/{topicName}/details/byTopic")
     public Map<String, Object> getTopicDetails(@PathVariable String topicName) throws ExecutionException, InterruptedException {
         return kafkaService.getTopicDetails(topicName);
-    }
-    
-    @GetMapping("/topics/details")
-    public Map<String, Map<String, Object>> getTopicDetails() throws ExecutionException, InterruptedException {
-        return kafkaService.getTopicDetails();
     }
     
 }

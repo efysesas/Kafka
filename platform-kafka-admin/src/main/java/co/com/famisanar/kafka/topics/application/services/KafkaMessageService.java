@@ -49,9 +49,9 @@ public class KafkaMessageService {
 	@Autowired
     private ConsumerFactory<String, String> consumerFactory;
 	
-	@Autowired
-    private IAdminKafkaPersistenceAdapter departmentPersistenceAdapter;
-	
+//	@Autowired
+//    private IAdminKafkaPersistenceAdapter departmentPersistenceAdapter;
+//	
 	public List<Map<String, Object>> getMessages(String topic, int partition, int offset, int limit) {
 	    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
@@ -149,15 +149,15 @@ public class KafkaMessageService {
             kafkaTemplate.send(sendMessage.getTopic(), sendMessage.getPartition(), idMessage, sendMessage.getMessage()).get();
             return true;
         } catch (Exception e) {
-            MessageEntity messageEntity = new MessageEntity();
-            messageEntity.setMessageId(idMessage);
-            messageEntity.setAttempts(1);
-            messageEntity.setTopicKafka(sendMessage.getTopic());
-            messageEntity.setMessage(sendMessage.getMessage());
-            messageEntity.setApplication(servletContext.getContextPath());
-            messageEntity.setStatus("PENDING");
-            departmentPersistenceAdapter.saveMessageError(messageEntity);
-            log.error("ERROR ENVIANDO MENSAJE", e);
+//            MessageEntity messageEntity = new MessageEntity();
+//            messageEntity.setMessageId(idMessage);
+//            messageEntity.setAttempts(1);
+//            messageEntity.setTopicKafka(sendMessage.getTopic());
+//            messageEntity.setMessage(sendMessage.getMessage());
+//            messageEntity.setApplication(servletContext.getContextPath());
+//            messageEntity.setStatus("PENDING");
+//            departmentPersistenceAdapter.saveMessageError(messageEntity);
+//            log.error("ERROR ENVIANDO MENSAJE", e);
             return false;
         }
     }

@@ -18,12 +18,12 @@ public class AdminPartitionsKafka {
 	@Autowired
     private KafkaPartitionsService kafkaService;
 	
-	@GetMapping("/topics/{topic}/partitions/details")
+	@GetMapping("/topics/{topic}/partitions/details/byTopic")
     public Map<String, Object> getPartitionDetails(@PathVariable String topic) throws ExecutionException, InterruptedException {
         return kafkaService.getPartitionDetails(topic);
     }
 	
-	@GetMapping("/topics/{topic}/partitions/count")
+	@GetMapping("/topics/{topic}/partitions/count/byTopic")
     public int getPartitionCount(@PathVariable String topic) throws ExecutionException, InterruptedException {
         return kafkaService.getPartitionCount(topic);
     }

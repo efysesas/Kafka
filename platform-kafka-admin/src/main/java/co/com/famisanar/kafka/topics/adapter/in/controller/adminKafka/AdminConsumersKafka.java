@@ -18,10 +18,10 @@ public class AdminConsumersKafka {
 
 	@Autowired
     private KafkaConsumersService kafkaConsumersService;
-
+	
     @GetMapping("/consumers")
-    public List<String> listConsumerGroups() throws ExecutionException, InterruptedException {
-        return kafkaConsumersService.listConsumerGroups();
+    public Map<String, Map<String, Object>> getConsumersAndTopics() {
+        return kafkaConsumersService.getConsumersAndTopics();
     }
     
     @GetMapping("/consumers/count")
@@ -30,13 +30,12 @@ public class AdminConsumersKafka {
     }
     
     @GetMapping("/consumers/search")
-    public List<String> searchConsumerGroups(@RequestParam String searchTerm) throws ExecutionException, InterruptedException {
-        return kafkaConsumersService.searchConsumerGroups(searchTerm);
-    }
-    
-    @GetMapping("/consumersInf")
-    public Map<String, Map<String, Object>> getConsumersAndTopics() {
-        return kafkaConsumersService.getConsumersAndTopics();
+    public Map<String, Map<String, Object>> searchConsumerGroups(@RequestParam(required = false, defaultValue = "") String searchTerm) {
+        try {
+            return kafkaConsumersService.searchConsumerGroups(searchTerm);
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException("Error fetching consumer groups", e);
+        }
     }
     
 }
