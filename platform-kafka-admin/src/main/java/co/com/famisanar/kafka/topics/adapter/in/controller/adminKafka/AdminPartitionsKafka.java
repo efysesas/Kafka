@@ -1,4 +1,4 @@
-package co.com.famisanar.kafka.topics.adapter.in.controller;
+package co.com.famisanar.kafka.topics.adapter.in.controller.adminKafka;
 
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -13,7 +13,7 @@ import co.com.famisanar.kafka.topics.application.services.KafkaPartitionsService
 
 @CustomRestController
 @RequestMapping("/kafka")
-public class adminPartitionsKafka {
+public class AdminPartitionsKafka {
 	
 	@Autowired
     private KafkaPartitionsService kafkaService;

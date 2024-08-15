@@ -2,12 +2,15 @@ package co.com.famisanar.kafka.topics.application.services;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -49,20 +52,31 @@ public class KafkaMessageService {
 	@Autowired
     private IAdminKafkaPersistenceAdapter departmentPersistenceAdapter;
 	
-	public List<ConsumerRecord<String, String>> getMessages(String topic, int partition, int offset, int limit) {
-        
-		try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Collections.singletonList(topicPartition));
-        consumer.seek(topicPartition, offset);
+	public List<Map<String, Object>> getMessages(String topic, int partition, int offset, int limit) {
+	    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
-        List<ConsumerRecord<String, String>> records = consumer.poll(Duration.ofSeconds(1)).records(topicPartition);
-        consumer.close();
+	    try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
+	        TopicPartition topicPartition = new TopicPartition(topic, partition);
+	        consumer.assign(Collections.singletonList(topicPartition));
+	        consumer.seek(topicPartition, offset);
 
-        return records.subList(0, Math.min(records.size(), limit));
-		}
-		
-    }
+	        List<ConsumerRecord<String, String>> records = consumer.poll(Duration.ofSeconds(1)).records(topicPartition);
+
+	        // Cerrar el consumidor después de obtener los registros
+	        consumer.close();
+
+	        // Mapear los registros a una lista de mapas con timestamp formateado
+	        return records.subList(0, Math.min(records.size(), limit)).stream().map(record -> {
+	            Map<String, Object> messageDetails = new HashMap<>();
+	            messageDetails.put("key", record.key());
+	            messageDetails.put("value", record.value());
+	            messageDetails.put("timestamp", formatter.format(Instant.ofEpochMilli(record.timestamp())));
+	            messageDetails.put("partition", record.partition());
+	            messageDetails.put("offset", record.offset());
+	            return messageDetails;
+	        }).collect(Collectors.toList());
+	    }
+	}
 	
 	public List<ConsumerRecord<String, String>> getMessagesByDateRange(String topic, int partition, Instant startTime, Instant endTime) {
         Map<TopicPartition, Long> timestampsToSearch = new HashMap<>();
@@ -102,8 +116,7 @@ public class KafkaMessageService {
 	public List<ConsumerRecord<String, String>> getMessagesByValue(SendMessage sendMessage) {
 
         try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
-        	log.info(sendMessage.getTopic()+" - "+sendMessage.getPartition());
-			TopicPartition topicPartition = new TopicPartition(sendMessage.getTopic(), sendMessage.getPartition());
+        	TopicPartition topicPartition = new TopicPartition(sendMessage.getTopic(), sendMessage.getPartition());
 			consumer.assign(Collections.singletonList(topicPartition));
 			consumer.seek(topicPartition, sendMessage.getOffset());
 			
@@ -133,7 +146,7 @@ public class KafkaMessageService {
 	public boolean send(SendMessage sendMessage) {
         String idMessage = UUID.randomUUID().toString();
         try {
-            kafkaTemplate.send(sendMessage.getTopic(), sendMessage.getPartition(), idMessage, sendMessage.getMessage()).get(); // Espera a que el mensaje se envíe
+            kafkaTemplate.send(sendMessage.getTopic(), sendMessage.getPartition(), idMessage, sendMessage.getMessage()).get();
             return true;
         } catch (Exception e) {
             MessageEntity messageEntity = new MessageEntity();

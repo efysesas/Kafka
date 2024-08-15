@@ -10,7 +10,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
+import org.apache.kafka.clients.admin.ListConsumerGroupsResult;
+import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -19,6 +23,7 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Service;
 
@@ -29,30 +34,79 @@ public class KafkaTopicsService {
     private KafkaAdmin kafkaAdmin;
 	
 	private AdminClient adminClient;
+	
+	@Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrapServers;
 
     public KafkaTopicsService(KafkaAdmin kafkaAdmin) {
         this.adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
     }
     
-    public Map<String, TopicDescription> listTopicDetails() throws ExecutionException, InterruptedException {
-        // Crear AdminClient usando la configuración de KafkaAdmin
-        AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
+    public Map<String, Map<String, Object>> getTopicDetails() throws ExecutionException, InterruptedException {
+        try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
+            // Obtener la lista de nombres de tópicos
+            ListTopicsResult listTopicsResult = adminClient.listTopics();
+            Set<String> topicNames = listTopicsResult.names().get();
 
-        // Obtener la lista de nombres de tópicos
-        ListTopicsResult listTopicsResult = adminClient.listTopics();
-        Set<String> topicNames = listTopicsResult.names().get();
+            // Obtener detalles de los tópicos
+            DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(topicNames);
+            @SuppressWarnings("deprecation")
+			Map<String, TopicDescription> topicDescriptions = describeTopicsResult.all().get();
 
-        // Obtener detalles de los tópicos
-        DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(topicNames);
-        @SuppressWarnings("deprecation")
-		Map<String, TopicDescription> topicDescriptions = describeTopicsResult.all().get();
+            // Obtener los grupos de consumidores
+            ListConsumerGroupsResult consumerGroupsResult = adminClient.listConsumerGroups();
+            Set<String> consumerGroups = consumerGroupsResult.all().get().stream()
+                .map(cg -> cg.groupId())
+                .collect(Collectors.toSet());
 
-        // Cerrar AdminClient
-        adminClient.close();
+            // Obtener la descripción de los grupos de consumidores
+            Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient.describeConsumerGroups(consumerGroups).all().get();
 
-        return topicDescriptions;
+            // Obtener offsets para contar los mensajes
+            Map<TopicPartition, OffsetSpec> topicPartitionOffsetSpecs = new HashMap<>();
+            for (String topicName : topicNames) {
+                TopicDescription topicDescription = topicDescriptions.get(topicName);
+                for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
+                    topicPartitionOffsetSpecs.put(new TopicPartition(topicName, partitionInfo.partition()), OffsetSpec.latest());
+                }
+            }
+
+            // Obtener los offsets más recientes
+            Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> latestOffsets = adminClient.listOffsets(topicPartitionOffsetSpecs).all().get();
+
+            // Mapear los detalles de los tópicos y consumidores
+            Map<String, Map<String, Object>> topicDetailsMap = new HashMap<>();
+            for (String topicName : topicNames) {
+                TopicDescription topicDescription = topicDescriptions.get(topicName);
+                Set<String> consumers = consumerGroupDescriptions.values().stream()
+                    .flatMap(cg -> cg.members().stream())
+                    .flatMap(member -> member.assignment().topicPartitions().stream())
+                    .filter(tp -> tp.topic().equals(topicName))
+                    .map(tp -> tp.topic())
+                    .collect(Collectors.toSet());
+
+                // Calcular el total de mensajes
+                long totalMessages = 0;
+                for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
+                    TopicPartition partition = new TopicPartition(topicName, partitionInfo.partition());
+                    long latestOffset = latestOffsets.get(partition).offset();
+                    TopicPartition earliestPartition = new TopicPartition(topicName, partitionInfo.partition());
+                    long earliestOffset = adminClient.listOffsets(Map.of(earliestPartition, OffsetSpec.earliest())).all().get().get(earliestPartition).offset();
+                    totalMessages += latestOffset - earliestOffset;
+                }
+
+                Map<String, Object> details = new HashMap<>();
+                details.put("totalPartitions", topicDescription.partitions().size()); // Total de particiones
+                details.put("consumers", consumers); // Consumidores asociados
+                details.put("totalMessages", totalMessages); // Total de mensajes
+
+                topicDetailsMap.put(topicName, details);
+            }
+
+            return topicDetailsMap;
+        }
     }
-
+    
     public Set<String> listTopics() throws ExecutionException, InterruptedException {
         AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
         ListTopicsResult topics = adminClient.listTopics();

@@ -1,6 +1,7 @@
-package co.com.famisanar.kafka.topics.adapter.in.controller;
+package co.com.famisanar.kafka.topics.adapter.in.controller.adminKafka;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +14,7 @@ import co.com.famisanar.kafka.topics.application.services.KafkaConsumersService;
 
 @CustomRestController
 @RequestMapping("/kafka")
-public class adminConsumersKafka {
+public class AdminConsumersKafka {
 
 	@Autowired
     private KafkaConsumersService kafkaConsumersService;
@@ -31,6 +32,11 @@ public class adminConsumersKafka {
     @GetMapping("/consumers/search")
     public List<String> searchConsumerGroups(@RequestParam String searchTerm) throws ExecutionException, InterruptedException {
         return kafkaConsumersService.searchConsumerGroups(searchTerm);
+    }
+    
+    @GetMapping("/consumersInf")
+    public Map<String, Map<String, Object>> getConsumersAndTopics() {
+        return kafkaConsumersService.getConsumersAndTopics();
     }
     
 }

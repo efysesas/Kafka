@@ -1,9 +1,10 @@
-package co.com.famisanar.kafka.topics.adapter.in.controller;
+package co.com.famisanar.kafka.topics.adapter.in.controller.adminKafka;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -22,27 +23,18 @@ import co.com.famisanar.kafka.topics.application.services.KafkaMessageService;
 
 @CustomRestController
 @RequestMapping("/kafka")
-public class adminMessageKafka {
+public class AdminMessageKafka {
 
 	@Autowired
     private KafkaMessageService kafkaMessageService;
 	
-    @GetMapping("/topics/{topic}/partitions/{partition}/messages")
+	@GetMapping("/topics/{topic}/partitions/{partition}/messages")
     public List<Map<String, Object>> getMessages(
-            @PathVariable String topic,
+    		@PathVariable String topic,
             @PathVariable int partition,
             @RequestParam int offset,
-            @RequestParam int limit) {
-        List<ConsumerRecord<String, String>> records = kafkaMessageService.getMessages(topic, partition, offset, limit);
-        return records.stream().map(record -> {
-            Map<String, Object> message = new HashMap<>();
-            message.put("offset", record.offset());
-            message.put("key", record.key());
-            message.put("value", record.value());
-            message.put("partition", record.partition());
-            message.put("timestamp", record.timestamp());
-            return message;
-        }).collect(Collectors.toList());
+            @RequestParam int limit) throws ExecutionException, InterruptedException {
+        return kafkaMessageService.getMessages(topic, partition, offset, limit);
     }
     
     @GetMapping("/topics/{topic}/partitions/{partition}/messagesByDate")
