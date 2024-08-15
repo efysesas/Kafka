@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -36,6 +37,11 @@ public class AdminConsumersKafka {
         } catch (ExecutionException | InterruptedException e) {
             throw new RuntimeException("Error fetching consumer groups", e);
         }
+    }
+    
+    @GetMapping("/topics-by-consumer/{consumerGroupId}")
+    public List<String> getTopicsByConsumer(@PathVariable String consumerGroupId) {
+        return kafkaConsumersService.getTopicsByConsumer(consumerGroupId);
     }
     
 }

@@ -2,6 +2,7 @@ package co.com.famisanar.kafka.topics.application.services;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
+import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -183,4 +184,58 @@ public class KafkaPartitionsService {
         return partitionDetails;
     }
     
+    public Map<String, Map<String, Map<String, Object>>> getAllPartitionDetails() throws ExecutionException, InterruptedException {
+        // Obtener la lista de todos los tópicos
+        DescribeTopicsResult topicsResult = adminClient.describeTopics(adminClient.listTopics().names().get());
+        Map<String, TopicDescription> topicDescriptions = topicsResult.all().get();
+
+        Map<String, Map<String, Map<String, Object>>> allPartitionDetails = new HashMap<>();
+
+        for (Map.Entry<String, TopicDescription> entry : topicDescriptions.entrySet()) {
+            String topic = entry.getKey();
+            TopicDescription topicDescription = entry.getValue();
+
+            Map<String, Map<String, Object>> partitionDetails = new HashMap<>();
+
+            for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
+                int partition = partitionInfo.partition();
+                TopicPartition topicPartition = new TopicPartition(topic, partition);
+
+                Map<String, Object> partitionInfoMap = new HashMap<>();
+
+                Map<TopicPartition, ListOffsetsResultInfo> offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.latest())).all().get();
+                ListOffsetsResultInfo offsetSpec = offsets.get(topicPartition);
+                long lastOffset = offsetSpec.offset();
+
+                offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.earliest())).all().get();
+                offsetSpec = offsets.get(topicPartition);
+                long firstOffset = offsetSpec.offset();
+                long size = lastOffset - firstOffset;
+
+                List<Node> replicaNodes = partitionInfo.replicas();
+                List<Node> inSyncReplicaNodes = partitionInfo.isr();
+
+                List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).collect(Collectors.toList());
+                List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).collect(Collectors.toList());
+                List<Integer> offlineReplicaNodeIds = new ArrayList<>(replicaNodeIds);
+                offlineReplicaNodeIds.removeAll(inSyncReplicaNodeIds);
+
+                Node leaderNode = partitionInfo.leader();
+
+                partitionInfoMap.put("firstOffset", firstOffset);
+                partitionInfoMap.put("lastOffset", lastOffset);
+                partitionInfoMap.put("size", size);
+                partitionInfoMap.put("leaderNode", leaderNode.id());
+                partitionInfoMap.put("replicaNodes", replicaNodeIds);
+                partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
+                partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
+
+                partitionDetails.put("partition-" + partition, partitionInfoMap);
+            }
+
+            allPartitionDetails.put(topic, partitionDetails);
+        }
+
+        return allPartitionDetails;
+    }
 }

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import co.com.famisanar.kafka.shared.annotations.CustomRestController;
 import co.com.famisanar.kafka.topics.application.services.KafkaPartitionsService;
@@ -17,6 +18,15 @@ public class AdminPartitionsKafka {
 	
 	@Autowired
     private KafkaPartitionsService kafkaService;
+	
+	@GetMapping("/partition-details")
+    public Map<String, Map<String, Map<String, Object>>> getAllPartitionDetails() {
+        try {
+            return kafkaService.getAllPartitionDetails();
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException("Error fetching partition details for all topics", e);
+        }
+    }
 	
 	@GetMapping("/topics/{topic}/partitions/details/byTopic")
     public Map<String, Object> getPartitionDetails(@PathVariable String topic) throws ExecutionException, InterruptedException {
