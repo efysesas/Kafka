@@ -57,7 +57,7 @@ public class AdminMessageKafka {
         }).collect(Collectors.toList());
     }
     
-    @GetMapping("/findMessages")
+    @GetMapping("/messages/search")
     public List<Map<String, Object>> getMessagesByValue(@RequestBody SendMessage sendMessage) {
         List<ConsumerRecord<String, String>> messages = kafkaMessageService.getMessagesByValue(sendMessage);
         return messages.stream().map(record -> {
