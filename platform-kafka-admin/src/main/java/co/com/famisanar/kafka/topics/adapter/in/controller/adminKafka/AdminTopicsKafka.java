@@ -2,7 +2,6 @@ package co.com.famisanar.kafka.topics.adapter.in.controller.adminKafka;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +21,7 @@ public class AdminTopicsKafka {
     private KafkaTopicsService kafkaService;
     
     @GetMapping("/topics")
-    public Map<String, Map<String, Object>> getTopicDetails() throws ExecutionException, InterruptedException {
+    public String getTopicDetails() throws ExecutionException, InterruptedException {
         return kafkaService.getTopicDetails();
     }
     
@@ -32,7 +31,7 @@ public class AdminTopicsKafka {
     }
     
     @GetMapping("/topics/search")
-    public List<String> searchTopics(@RequestParam String searchTerm) throws ExecutionException, InterruptedException {
+    public String searchTopics(@RequestParam String searchTerm) throws ExecutionException, InterruptedException {
         return kafkaService.searchTopics(searchTerm);
     }
     

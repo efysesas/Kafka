@@ -24,13 +24,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import co.com.famisanar.kafka.topics.adapter.in.dto.SendMessage;
-import co.com.famisanar.kafka.topics.adapter.out.entity.MessageEntity;
-import co.com.famisanar.kafka.topics.application.ports.out.IAdminKafkaPersistenceAdapter;
 import jakarta.servlet.ServletContext;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
-@Slf4j
 public class KafkaMessageService {
 	
 	@Value("${spring.kafka.bootstrap-servers}")

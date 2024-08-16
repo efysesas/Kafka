@@ -2,7 +2,6 @@ package co.com.famisanar.kafka.topics.application.services;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
-import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -187,7 +186,8 @@ public class KafkaPartitionsService {
     public Map<String, Map<String, Map<String, Object>>> getAllPartitionDetails() throws ExecutionException, InterruptedException {
         // Obtener la lista de todos los tópicos
         DescribeTopicsResult topicsResult = adminClient.describeTopics(adminClient.listTopics().names().get());
-        Map<String, TopicDescription> topicDescriptions = topicsResult.all().get();
+        @SuppressWarnings("deprecation")
+		Map<String, TopicDescription> topicDescriptions = topicsResult.all().get();
 
         Map<String, Map<String, Map<String, Object>>> allPartitionDetails = new HashMap<>();
 

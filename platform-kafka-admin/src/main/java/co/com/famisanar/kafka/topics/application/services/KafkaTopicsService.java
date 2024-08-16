@@ -27,6 +27,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Service;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 @Service
 public class KafkaTopicsService {
 
@@ -42,7 +45,7 @@ public class KafkaTopicsService {
         this.adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
     }
     
-    public Map<String, Map<String, Object>> getTopicDetails() throws ExecutionException, InterruptedException {
+    public String getTopicDetails() throws ExecutionException, InterruptedException {
         try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
             // Obtener la lista de nombres de tópicos
             ListTopicsResult listTopicsResult = adminClient.listTopics();
@@ -76,6 +79,7 @@ public class KafkaTopicsService {
 
             // Mapear los detalles de los tópicos y consumidores
             Map<String, Map<String, Object>> topicDetailsMap = new HashMap<>();
+            List<Map<String, Object>> topicDetailsList = null;
             for (String topicName : topicNames) {
                 TopicDescription topicDescription = topicDescriptions.get(topicName);
                 Set<String> consumers = consumerGroupDescriptions.values().stream()
@@ -96,14 +100,21 @@ public class KafkaTopicsService {
                 }
 
                 Map<String, Object> details = new HashMap<>();
+                details.put("topicName",topicName);
                 details.put("totalPartitions", topicDescription.partitions().size()); // Total de particiones
                 details.put("consumers", consumers); // Consumidores asociados
                 details.put("totalMessages", totalMessages); // Total de mensajes
 
                 topicDetailsMap.put(topicName, details);
-            }
+                
+                topicDetailsList = new ArrayList<>(topicDetailsMap.values());
 
-            return topicDetailsMap;
+            }
+            
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            String json = gson.toJson(topicDetailsList);
+
+            return json;
         }
     }
     
@@ -184,12 +195,75 @@ public class KafkaTopicsService {
         return topics.size();
     }
     
-    public List<String> searchTopics(String searchTerm) throws ExecutionException, InterruptedException {
-        ListTopicsResult topicsResult = adminClient.listTopics();
-        Set<String> topics = topicsResult.names().get();
-        return topics.stream()
-                .filter(topic -> topic.contains(searchTerm))
-                .collect(Collectors.toList());
+    public String searchTopics(String searchTerm) throws ExecutionException, InterruptedException {
+        // Obtener la lista de nombres de tópicos
+        ListTopicsResult listTopicsResult = adminClient.listTopics();
+        Set<String> topicNames = listTopicsResult.names().get();
+
+        // Filtrar tópicos que contengan el término de búsqueda
+        Set<String> filteredTopicNames = topicNames.stream()
+                .filter(topicName -> topicName.contains(searchTerm))
+                .collect(Collectors.toSet());
+
+        // Obtener detalles de los tópicos filtrados
+        DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(filteredTopicNames);
+        @SuppressWarnings("deprecation")
+		Map<String, TopicDescription> topicDescriptions = describeTopicsResult.all().get();
+
+        // Obtener los grupos de consumidores
+        ListConsumerGroupsResult consumerGroupsResult = adminClient.listConsumerGroups();
+        Set<String> consumerGroups = consumerGroupsResult.all().get().stream()
+                .map(cg -> cg.groupId())
+                .collect(Collectors.toSet());
+
+        // Obtener la descripción de los grupos de consumidores
+        Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient.describeConsumerGroups(consumerGroups).all().get();
+
+        // Obtener offsets para contar los mensajes
+        Map<TopicPartition, OffsetSpec> topicPartitionOffsetSpecs = new HashMap<>();
+        for (String topicName : filteredTopicNames) {
+            TopicDescription topicDescription = topicDescriptions.get(topicName);
+            for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
+                topicPartitionOffsetSpecs.put(new TopicPartition(topicName, partitionInfo.partition()), OffsetSpec.latest());
+            }
+        }
+
+        // Obtener los offsets más recientes
+        Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> latestOffsets = adminClient.listOffsets(topicPartitionOffsetSpecs).all().get();
+
+        // Mapear los detalles de los tópicos y consumidores
+        List<Map<String, Object>> topicDetailsList = new ArrayList<>();
+        for (String topicName : filteredTopicNames) {
+            TopicDescription topicDescription = topicDescriptions.get(topicName);
+            Set<String> consumers = consumerGroupDescriptions.values().stream()
+                    .flatMap(cg -> cg.members().stream())
+                    .flatMap(member -> member.assignment().topicPartitions().stream())
+                    .filter(tp -> tp.topic().equals(topicName))
+                    .map(tp -> tp.topic())
+                    .collect(Collectors.toSet());
+
+            // Calcular el total de mensajes
+            long totalMessages = 0;
+            for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
+                TopicPartition partition = new TopicPartition(topicName, partitionInfo.partition());
+                long latestOffset = latestOffsets.get(partition).offset();
+                TopicPartition earliestPartition = new TopicPartition(topicName, partitionInfo.partition());
+                long earliestOffset = adminClient.listOffsets(Map.of(earliestPartition, OffsetSpec.earliest())).all().get().get(earliestPartition).offset();
+                totalMessages += latestOffset - earliestOffset;
+            }
+
+            Map<String, Object> details = new HashMap<>();
+            details.put("topicName", topicName);
+            details.put("totalPartitions", topicDescription.partitions().size()); // Total de particiones
+            details.put("consumers", consumers); // Consumidores asociados
+            details.put("totalMessages", totalMessages); // Total de mensajes
+
+            topicDetailsList.add(details);
+        }
+
+        // Convertir la lista a JSON
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        return gson.toJson(topicDetailsList);
     }
     
     public Map<String, Object> getTopicDetails(String topicName) throws ExecutionException, InterruptedException {
