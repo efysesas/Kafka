@@ -31,12 +31,8 @@ public class AdminConsumersKafka {
     }
     
     @GetMapping("/consumers/search")
-    public String searchConsumerGroups(@RequestParam(required = false, defaultValue = "") String searchTerm) {
-        try {
-            return kafkaConsumersService.searchConsumerGroups(searchTerm);
-        } catch (ExecutionException | InterruptedException e) {
-            throw new RuntimeException("Error fetching consumer groups", e);
-        }
+    public String searchConsumerGroups(@RequestParam String consumer)throws ExecutionException, InterruptedException  {
+        return kafkaConsumersService.searchConsumerGroups(consumer);
     }
     
     @GetMapping("/topics-by-consumer/{consumerGroupId}")

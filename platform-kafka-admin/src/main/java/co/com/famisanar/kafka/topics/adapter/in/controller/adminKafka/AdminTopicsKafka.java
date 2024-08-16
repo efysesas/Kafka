@@ -1,6 +1,5 @@
 package co.com.famisanar.kafka.topics.adapter.in.controller.adminKafka;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -25,14 +24,9 @@ public class AdminTopicsKafka {
         return kafkaService.getTopicDetails();
     }
     
-    @GetMapping("/topics/count")
-    public int countTopics() throws ExecutionException, InterruptedException {
-        return kafkaService.countTopics();
-    }
-    
     @GetMapping("/topics/search")
-    public String searchTopics(@RequestParam String searchTerm) throws ExecutionException, InterruptedException {
-        return kafkaService.searchTopics(searchTerm);
+    public String searchTopics(@RequestParam String search) throws ExecutionException, InterruptedException {
+        return kafkaService.searchTopics(search);
     }
     
     @GetMapping("/{topicName}/details/byTopic")
