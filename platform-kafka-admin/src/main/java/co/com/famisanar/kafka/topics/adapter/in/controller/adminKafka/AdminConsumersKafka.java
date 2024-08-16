@@ -21,7 +21,7 @@ public class AdminConsumersKafka {
     private KafkaConsumersService kafkaConsumersService;
 	
     @GetMapping("/consumers")
-    public Map<String, Map<String, Object>> getConsumersAndTopics() {
+    public String getConsumersAndTopics() {
         return kafkaConsumersService.getConsumersAndTopics();
     }
     
@@ -31,7 +31,7 @@ public class AdminConsumersKafka {
     }
     
     @GetMapping("/consumers/search")
-    public Map<String, Map<String, Object>> searchConsumerGroups(@RequestParam(required = false, defaultValue = "") String searchTerm) {
+    public String searchConsumerGroups(@RequestParam(required = false, defaultValue = "") String searchTerm) {
         try {
             return kafkaConsumersService.searchConsumerGroups(searchTerm);
         } catch (ExecutionException | InterruptedException e) {

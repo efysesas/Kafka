@@ -21,6 +21,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Service;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 @Service
 public class KafkaConsumersService {
 	
@@ -49,45 +52,53 @@ public class KafkaConsumersService {
         return groupListings.size();
     }
     
-    public Map<String, Map<String, Object>> searchConsumerGroups(String searchTerm) throws ExecutionException, InterruptedException {
+    public String searchConsumerGroups(String searchTerm) throws ExecutionException, InterruptedException {
         try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
-            
+            // Obtener los grupos de consumidores
             ListConsumerGroupsResult groupsResult = adminClient.listConsumerGroups();
             Set<String> consumerGroupIds = groupsResult.all().get().stream()
                     .map(ConsumerGroupListing::groupId)
                     .filter(groupId -> groupId.contains(searchTerm))
                     .collect(Collectors.toSet());
 
+            // Obtener la descripción de los grupos de consumidores
             Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient.describeConsumerGroups(consumerGroupIds).all().get();
 
-            Map<String, Map<String, Object>> consumerGroupDetails = consumerGroupDescriptions.entrySet().stream()
-                    .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> {
-                            Map<String, Object> details = new HashMap<>();
-                            ConsumerGroupDescription description = entry.getValue();
+            // Mapear detalles de los grupos de consumidores a una lista
+            List<Map<String, Object>> consumerGroupDetailsList = consumerGroupDescriptions.entrySet().stream()
+                .map(entry -> {
+                    Map<String, Object> details = new HashMap<>();
+                    ConsumerGroupDescription description = entry.getValue();
 
-                            Set<String> topics = description.members().stream()
-                                    .flatMap(member -> member.assignment().topicPartitions().stream())
-                                    .map(tp -> tp.topic())
-                                    .collect(Collectors.toSet());
-                            details.put("topics", topics);
+                    // Obtener los tópicos asociados
+                    Set<String> topics = description.members().stream()
+                            .flatMap(member -> member.assignment().topicPartitions().stream())
+                            .map(TopicPartition::topic)
+                            .collect(Collectors.toSet());
+                    details.put("topics", topics);
 
-                            details.put("active", !description.members().isEmpty());
+                    // Verificar si el grupo de consumidores está activo
+                    details.put("active", !description.members().isEmpty());
 
-                            details.put("memberCount", description.members().size());
+                    // Obtener la cantidad de miembros en el grupo
+                    details.put("memberCount", description.members().size());
 
-                            return details;
-                        }
-                    ));
+                    // Agregar el nombre del grupo de consumidores
+                    details.put("name", entry.getKey());
 
-            return consumerGroupDetails;
+                    return details;
+                })
+                .collect(Collectors.toList());
+
+            // Convertir la lista a JSON
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            return gson.toJson(consumerGroupDetailsList);
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException("Error fetching Kafka consumer groups details", e);
         }
     }
     
-    public Map<String, Map<String, Object>> getConsumersAndTopics() {
+    public String getConsumersAndTopics() {
         try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
             // Obtener los grupos de consumidores
             ListConsumerGroupsResult consumerGroupsResult = adminClient.listConsumerGroups();
@@ -99,35 +110,35 @@ public class KafkaConsumersService {
             Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient.describeConsumerGroups(consumerGroups).all().get();
 
             // Mapear consumidores a topics con conteo
-            return consumerGroupDescriptions.entrySet().stream()
-                .collect(Collectors.toMap(
-                    Map.Entry::getKey,
-                    entry -> {
-                        Map<String, Object> details = new HashMap<>();
-                        ConsumerGroupDescription description = entry.getValue();
+            List<Map<String, Object>> consumerDetailsList = consumerGroupDescriptions.entrySet().stream()
+                .map(entry -> {
+                    Map<String, Object> details = new HashMap<>();
+                    ConsumerGroupDescription description = entry.getValue();
 
-                        // Contar los topics únicos asignados a cada consumidor
-                        long topicCount = description.members().stream()
-                            .flatMap(member -> member.assignment().topicPartitions().stream())
-                            .map(tp -> tp.topic())
-                            .distinct()
-                            .count();
-                        details.put("topicCount", (int) topicCount);
+                    // Contar los topics únicos asignados a cada consumidor
+                    long topicCount = description.members().stream()
+                        .flatMap(member -> member.assignment().topicPartitions().stream())
+                        .map(TopicPartition::topic)
+                        .distinct()
+                        .count();
+                    
+                    details.put("name", entry.getKey());
+                    details.put("topicCount", (int) topicCount);
+                    details.put("active", !description.members().isEmpty());
+                    // Obtener la cantidad de miembros en el grupo
+                    details.put("memberCount", description.members().size());
 
-                        // Verificar si el grupo de consumidores está activo
-                        details.put("active", !description.members().isEmpty());
+                    return details;
+                })
+                .collect(Collectors.toList());
 
-                        // Obtener la cantidad de miembros en el grupo
-                        details.put("memberCount", description.members().size());
-
-                        return details;
-                    }
-                ));
+            // Convertir la lista a JSON
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            return gson.toJson(consumerDetailsList);
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException("Error fetching Kafka consumers and topics", e);
         }
-    }
-    
+    }    
     
     public List<String> getTopicsByConsumer(String consumerGroupId) {
         try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
