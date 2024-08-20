@@ -8,6 +8,7 @@ import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Service;
 
@@ -183,57 +184,63 @@ public class KafkaPartitionsService {
         return partitionDetails;
     }
     
-    public Map<String, Map<String, Map<String, Object>>> getAllPartitionDetails() throws ExecutionException, InterruptedException {
-        // Obtener la lista de todos los tópicos
-        DescribeTopicsResult topicsResult = adminClient.describeTopics(adminClient.listTopics().names().get());
-        @SuppressWarnings("deprecation")
-		Map<String, TopicDescription> topicDescriptions = topicsResult.all().get();
+    public List<Map<String, Object>> getAllPartitionDetails() throws ExecutionException, InterruptedException {
+        List<Map<String, Object>> allPartitionDetails = new ArrayList<>();
+        
+        try {
+            // Obtener la lista de todos los tópicos
+            DescribeTopicsResult topicsResult = adminClient.describeTopics(adminClient.listTopics().names().get());
+            @SuppressWarnings("deprecation")
+            Map<String, TopicDescription> topicDescriptions = topicsResult.all().get();
 
-        Map<String, Map<String, Map<String, Object>>> allPartitionDetails = new HashMap<>();
+            for (Map.Entry<String, TopicDescription> entry : topicDescriptions.entrySet()) {
+                String topic = entry.getKey();
+                TopicDescription topicDescription = entry.getValue();
 
-        for (Map.Entry<String, TopicDescription> entry : topicDescriptions.entrySet()) {
-            String topic = entry.getKey();
-            TopicDescription topicDescription = entry.getValue();
+                for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
+                    int partition = partitionInfo.partition();
+                    TopicPartition topicPartition = new TopicPartition(topic, partition);
 
-            Map<String, Map<String, Object>> partitionDetails = new HashMap<>();
+                    Map<String, Object> partitionInfoMap = new HashMap<>();
 
-            for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
-                int partition = partitionInfo.partition();
-                TopicPartition topicPartition = new TopicPartition(topic, partition);
+                    Map<TopicPartition, ListOffsetsResultInfo> offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.latest())).all().get();
+                    ListOffsetsResultInfo offsetSpec = offsets.get(topicPartition);
+                    long lastOffset = offsetSpec.offset();
 
-                Map<String, Object> partitionInfoMap = new HashMap<>();
+                    offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.earliest())).all().get();
+                    offsetSpec = offsets.get(topicPartition);
+                    long firstOffset = offsetSpec.offset();
+                    long size = lastOffset - firstOffset;
 
-                Map<TopicPartition, ListOffsetsResultInfo> offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.latest())).all().get();
-                ListOffsetsResultInfo offsetSpec = offsets.get(topicPartition);
-                long lastOffset = offsetSpec.offset();
+                    List<Node> replicaNodes = partitionInfo.replicas();
+                    List<Node> inSyncReplicaNodes = partitionInfo.isr();
 
-                offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.earliest())).all().get();
-                offsetSpec = offsets.get(topicPartition);
-                long firstOffset = offsetSpec.offset();
-                long size = lastOffset - firstOffset;
+                    List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).collect(Collectors.toList());
+                    List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).collect(Collectors.toList());
+                    List<Integer> offlineReplicaNodeIds = new ArrayList<>(replicaNodeIds);
+                    offlineReplicaNodeIds.removeAll(inSyncReplicaNodeIds);
 
-                List<Node> replicaNodes = partitionInfo.replicas();
-                List<Node> inSyncReplicaNodes = partitionInfo.isr();
+                    Node leaderNode = partitionInfo.leader();
 
-                List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).collect(Collectors.toList());
-                List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).collect(Collectors.toList());
-                List<Integer> offlineReplicaNodeIds = new ArrayList<>(replicaNodeIds);
-                offlineReplicaNodeIds.removeAll(inSyncReplicaNodeIds);
+                    partitionInfoMap.put("partitionName", "partition-" + partition);
+                    partitionInfoMap.put("topicName", topic);
+                    partitionInfoMap.put("firstOffset", firstOffset);
+                    partitionInfoMap.put("lastOffset", lastOffset);
+                    partitionInfoMap.put("size", size);
+                    partitionInfoMap.put("leaderNode", leaderNode.id());
+                    partitionInfoMap.put("replicaNodes", replicaNodeIds);
+                    partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
+                    partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
 
-                Node leaderNode = partitionInfo.leader();
-
-                partitionInfoMap.put("firstOffset", firstOffset);
-                partitionInfoMap.put("lastOffset", lastOffset);
-                partitionInfoMap.put("size", size);
-                partitionInfoMap.put("leaderNode", leaderNode.id());
-                partitionInfoMap.put("replicaNodes", replicaNodeIds);
-                partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
-                partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
-
-                partitionDetails.put("partition-" + partition, partitionInfoMap);
+                    allPartitionDetails.add(partitionInfoMap);
+                }
             }
-
-            allPartitionDetails.put(topic, partitionDetails);
+        } catch (TimeoutException e) {
+            System.err.println("Error: El nodo Kafka no está disponible. Verifique la conexión al broker.");
+        } catch (ExecutionException e) {
+            System.err.println("Error: No se pudo ejecutar la consulta a Kafka. Verifique la configuración del cliente Kafka.");
+        } catch (Exception e) {
+            System.err.println("Error inesperado: " + e.getMessage());
         }
 
         return allPartitionDetails;

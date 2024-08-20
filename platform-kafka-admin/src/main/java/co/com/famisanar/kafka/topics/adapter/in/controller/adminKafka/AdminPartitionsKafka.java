@@ -1,5 +1,6 @@
 package co.com.famisanar.kafka.topics.adapter.in.controller.adminKafka;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -20,7 +21,7 @@ public class AdminPartitionsKafka {
     private KafkaPartitionsService kafkaService;
 	
 	@GetMapping("/partitions")
-    public Map<String, Map<String, Map<String, Object>>> getAllPartitionDetails() throws ExecutionException, InterruptedException  {
+    public List<Map<String, Object>> getAllPartitionDetails() throws ExecutionException, InterruptedException  {
         return kafkaService.getAllPartitionDetails();
     }
 	
@@ -30,7 +31,7 @@ public class AdminPartitionsKafka {
     }
 	
 	@GetMapping("/topics/{topic}/partitions/details/byTopic")
-    public Map<String, Object> getPartitionDetails(@PathVariable String topic) throws ExecutionException, InterruptedException {
+    public List<Map<String, Object>> getPartitionDetails(@PathVariable String topic) throws ExecutionException, InterruptedException {
         return kafkaService.getPartitionDetails(topic);
     }
 	
