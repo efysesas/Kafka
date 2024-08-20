@@ -37,30 +37,29 @@ public class KafkaPartitionsService {
      * @throws ExecutionException   Si ocurre un error durante la ejecución
      * @throws InterruptedException Si el hilo es interrumpido
      */
-    public Map<String, Object> getPartitionDetails(String topic) throws ExecutionException, InterruptedException {
+    public List<Map<String, Object>> getPartitionDetails(String topic) throws ExecutionException, InterruptedException {
         // Describe el tópico y obtener su descripción
         DescribeTopicsResult topicsResult = adminClient.describeTopics(Collections.singletonList(topic));
         @SuppressWarnings("deprecation")
-		TopicDescription topicDescription = topicsResult.all().get().get(topic);
+        TopicDescription topicDescription = topicsResult.all().get().get(topic);
 
         if (topicDescription == null) {
             throw new IllegalArgumentException("Tópico no encontrado: " + topic);
         }
 
-        Map<String, Object> partitionDetails = new HashMap<>();
+        List<Map<String, Object>> partitionDetailsList = new ArrayList<>();
 
-        
+        // Iterar sobre las particiones del tópico
         for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
-            int partition = partitionInfo.partition();// Iterar sobre las particiones del tópico
+            int partition = partitionInfo.partition();
             TopicPartition topicPartition = new TopicPartition(topic, partition);
 
-            
-            Map<String, Object> partitionInfoMap = new HashMap<>();// Crear un mapa para almacenar la información de la partición
+            // Crear un mapa para almacenar la información de la partición
+            Map<String, Object> partitionInfoMap = new HashMap<>();
 
-            
+            // Obtener los offsets de inicio y fin de la partición
             Map<TopicPartition, ListOffsetsResultInfo> offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.latest())).all().get();
-            ListOffsetsResultInfo offsetSpec = offsets.get(topicPartition);// Obtener los offsets de inicio y fin de la partición
-
+            ListOffsetsResultInfo offsetSpec = offsets.get(topicPartition);
             long lastOffset = offsetSpec.offset();
 
             offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.earliest())).all().get();
@@ -69,6 +68,8 @@ public class KafkaPartitionsService {
 
             long size = lastOffset - firstOffset;
 
+            partitionInfoMap.put("partitionName", "partition-" + partition);
+            partitionInfoMap.put("topicName", topic);
             partitionInfoMap.put("firstOffset", firstOffset);
             partitionInfoMap.put("lastOffset", lastOffset);
             partitionInfoMap.put("size", size);
@@ -87,19 +88,16 @@ public class KafkaPartitionsService {
             // Obtener el líder de la partición
             Node leaderNode = partitionInfo.leader();
 
-            partitionInfoMap.put("firstOffset", firstOffset);
-            partitionInfoMap.put("lastOffset", lastOffset);
-            partitionInfoMap.put("size", size);
             partitionInfoMap.put("leaderNode", leaderNode.id());
             partitionInfoMap.put("replicaNodes", replicaNodeIds);
             partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
             partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
 
-            // Agregar la información de la partición al mapa de detalles
-            partitionDetails.put("partition-" + partition, partitionInfoMap);
+            // Agregar la información de la partición a la lista de detalles
+            partitionDetailsList.add(partitionInfoMap);
         }
 
-        return partitionDetails;
+        return partitionDetailsList;
     }
     
     public int getPartitionCount(String topic) throws ExecutionException, InterruptedException {
@@ -141,8 +139,6 @@ public class KafkaPartitionsService {
 
         TopicPartition topicPartition = new TopicPartition(topic, partition);
 
-        Map<String, Object> partitionDetails = new HashMap<>();
-
         // Obtener los offsets de inicio y fin de la partición
         Map<TopicPartition, ListOffsetsResultInfo> offsets = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.latest())).all().get();
         ListOffsetsResultInfo offsetSpec = offsets.get(topicPartition);
@@ -154,7 +150,10 @@ public class KafkaPartitionsService {
 
         long size = lastOffset - firstOffset;
 
+        // Crear un mapa para contener toda la información de la partición
         Map<String, Object> partitionInfoMap = new HashMap<>();
+        partitionInfoMap.put("partitionName", "partition-" + partition);
+        partitionInfoMap.put("topicName", topic);
         partitionInfoMap.put("firstOffset", firstOffset);
         partitionInfoMap.put("lastOffset", lastOffset);
         partitionInfoMap.put("size", size);
@@ -178,10 +177,7 @@ public class KafkaPartitionsService {
         partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
         partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
 
-        // Agregar la información de la partición al mapa de detalles
-        partitionDetails.put("partition-" + partition, partitionInfoMap);
-
-        return partitionDetails;
+        return partitionInfoMap;
     }
     
     public List<Map<String, Object>> getAllPartitionDetails() throws ExecutionException, InterruptedException {

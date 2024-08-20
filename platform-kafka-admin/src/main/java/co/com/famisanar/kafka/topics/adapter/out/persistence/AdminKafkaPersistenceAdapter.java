@@ -1,4 +1,4 @@
-package co.com.famisanar.kafka.topics.adapter.out.percistence;
+package co.com.famisanar.kafka.topics.adapter.out.persistence;
 
 import java.util.List;
 

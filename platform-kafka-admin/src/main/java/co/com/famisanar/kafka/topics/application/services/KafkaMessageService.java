@@ -23,7 +23,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import co.com.famisanar.kafka.topics.adapter.in.dto.SendMessage;
+import co.com.famisanar.kafka.topics.adapter.in.dto.kafkaAdmin.SendMessage;
 import jakarta.servlet.ServletContext;
 
 @Service

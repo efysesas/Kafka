@@ -25,8 +25,8 @@ public class AdminTopicsKafka {
     }
     
     @GetMapping("/topics/search")
-    public String searchTopics(@RequestParam String search) throws ExecutionException, InterruptedException {
-        return kafkaService.searchTopics(search);
+    public String searchTopics(@RequestParam String topic) throws ExecutionException, InterruptedException {
+        return kafkaService.searchTopics(topic);
     }
     
     @GetMapping("/{topicName}/details/byTopic")

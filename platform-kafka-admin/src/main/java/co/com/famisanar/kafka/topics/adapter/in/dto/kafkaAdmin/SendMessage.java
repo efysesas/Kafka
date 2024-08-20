@@ -1,4 +1,4 @@
-package co.com.famisanar.kafka.topics.adapter.in.dto;
+package co.com.famisanar.kafka.topics.adapter.in.dto.kafkaAdmin;
 
 import lombok.Data;
 

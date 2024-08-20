@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import co.com.famisanar.kafka.shared.annotations.CustomRestController;
-import co.com.famisanar.kafka.topics.adapter.in.dto.SendMessage;
+import co.com.famisanar.kafka.topics.adapter.in.dto.kafkaAdmin.SendMessage;
 import co.com.famisanar.kafka.topics.application.services.KafkaMessageService;
 
 @CustomRestController
