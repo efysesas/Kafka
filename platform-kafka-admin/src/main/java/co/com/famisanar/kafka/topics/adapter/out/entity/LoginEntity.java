@@ -12,7 +12,7 @@ import lombok.Data;
 public class LoginEntity {
 	@Id
     @Column(name = "USER_ID")
-    private String identificaTion;
+    private Long identification;
     @Column(name = "NAME", length = 50)
 	private String name;
     @Column(name = "LASTNAME", length = 50)

@@ -4,12 +4,13 @@ import lombok.Data;
 
 @Data
 public class LoginRegister {
-	private String nombre;
-	private String apellido;
-	private String usuarioDominio;
-	private String correo;
+    private Long identification;
+	private String name;
+	private String lastname;
+	private String userDomain;
+	private String email;
 	private String area;
-	private String usuarioKafka;
+	private String userKafka;
 	private String passwordKafka;
 	private int active;
 }

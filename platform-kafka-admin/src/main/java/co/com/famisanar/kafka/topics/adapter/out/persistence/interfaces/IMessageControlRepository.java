@@ -1,4 +1,4 @@
-package co.com.famisanar.kafka.topics.adapter.out.percistence.interfaces;
+package co.com.famisanar.kafka.topics.adapter.out.persistence.interfaces;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

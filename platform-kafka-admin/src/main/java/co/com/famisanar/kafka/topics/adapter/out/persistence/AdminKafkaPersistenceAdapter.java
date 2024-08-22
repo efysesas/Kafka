@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import co.com.famisanar.kafka.shared.annotations.PersistenceAdapter;
 import co.com.famisanar.kafka.topics.adapter.out.entity.MessageEntity;
-import co.com.famisanar.kafka.topics.adapter.out.percistence.interfaces.IMessageControlRepository;
+import co.com.famisanar.kafka.topics.adapter.out.persistence.interfaces.IMessageControlRepository;
 import co.com.famisanar.kafka.topics.application.ports.out.IAdminKafkaPersistenceAdapter;
 
 @PersistenceAdapter

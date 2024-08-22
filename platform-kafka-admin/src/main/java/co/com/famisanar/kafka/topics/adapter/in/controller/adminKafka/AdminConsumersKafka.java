@@ -34,7 +34,7 @@ public class AdminConsumersKafka {
         return kafkaConsumersService.searchConsumerGroups(consumer);
     }
     
-    @GetMapping("/topics-by-consumer/{consumerGroupId}")
+    @GetMapping("/topicsByConsumer/{consumerGroupId}")
     public List<String> getTopicsByConsumer(@PathVariable String consumerGroupId) {
         return kafkaConsumersService.getTopicsByConsumer(consumerGroupId);
     }

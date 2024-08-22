@@ -12,8 +12,7 @@ spring:
     bootstrap-servers: 20.85.127.35:9092
     
   jpa:
-    hibernate.ddl-auto: none
-    show-sql: true
+    hibernate.ddl-auto: update
     database: oracle
     database-platform: org.hibernate.dialect.OracleDialect
   datasource:
