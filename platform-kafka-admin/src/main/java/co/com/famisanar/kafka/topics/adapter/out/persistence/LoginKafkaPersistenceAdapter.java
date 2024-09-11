@@ -12,7 +12,7 @@ import co.com.famisanar.kafka.shared.annotations.PersistenceAdapter;
 import co.com.famisanar.kafka.topics.adapter.in.dto.loginKafka.LoginRegister;
 import co.com.famisanar.kafka.topics.adapter.out.entity.LoginEntity;
 import co.com.famisanar.kafka.topics.adapter.out.exceptions.RespuestaHttpHandler;
-import co.com.famisanar.kafka.topics.adapter.out.persistence.interfaces.ILoginRepository;
+import co.com.famisanar.kafka.topics.adapter.out.persistence.interfaces.ILogin;
 import co.com.famisanar.kafka.topics.application.ports.out.ILoginPersistenceAdapter;
 
 @PersistenceAdapter
@@ -25,7 +25,7 @@ public class LoginKafkaPersistenceAdapter implements ILoginPersistenceAdapter{
     private ModelMapper modelMapper;
 	
 	@Autowired
-	ILoginRepository iLoginRepository;
+	ILogin iLoginRepository;
 	
 	@Autowired
 	RespuestaHttpHandler respuestaHttpHandler;

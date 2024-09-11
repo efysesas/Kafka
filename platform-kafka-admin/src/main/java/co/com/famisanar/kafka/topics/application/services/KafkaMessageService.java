@@ -23,11 +23,17 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import co.com.famisanar.kafka.topics.adapter.in.dto.KafkaMessage.LogMessageChange;
 import co.com.famisanar.kafka.topics.adapter.in.dto.kafkaAdmin.SendMessage;
+import co.com.famisanar.kafka.topics.adapter.out.entity.MessageEntity;
+import co.com.famisanar.kafka.topics.adapter.out.persistence.AdminKafkaPersistenceAdapter;
+import co.com.famisanar.kafka.topics.application.ports.in.IKafkaRelaunchMessage;
 import jakarta.servlet.ServletContext;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
-public class KafkaMessageService {
+@Slf4j
+public class KafkaMessageService implements IKafkaRelaunchMessage{
 	
 	@Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
@@ -45,9 +51,9 @@ public class KafkaMessageService {
 	@Autowired
     private ConsumerFactory<String, String> consumerFactory;
 	
-//	@Autowired
-//    private IAdminKafkaPersistenceAdapter departmentPersistenceAdapter;
-//	
+	@Autowired
+    private AdminKafkaPersistenceAdapter adminKafkaPersistenceAdapter;
+		
 	public List<Map<String, Object>> getMessages(String topic, int partition, int offset, int limit) {
 	    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
@@ -58,10 +64,8 @@ public class KafkaMessageService {
 
 	        List<ConsumerRecord<String, String>> records = consumer.poll(Duration.ofSeconds(1)).records(topicPartition);
 
-	        // Cerrar el consumidor después de obtener los registros
 	        consumer.close();
 
-	        // Mapear los registros a una lista de mapas con timestamp formateado
 	        return records.subList(0, Math.min(records.size(), limit)).stream().map(record -> {
 	            Map<String, Object> messageDetails = new HashMap<>();
 	            messageDetails.put("key", record.key());
@@ -110,34 +114,33 @@ public class KafkaMessageService {
     }
 	
 	public List<ConsumerRecord<String, String>> getMessagesByValue(SendMessage sendMessage) {
+	    try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
+	        TopicPartition topicPartition = new TopicPartition(sendMessage.getTopic(), sendMessage.getPartition());
+	        consumer.assign(Collections.singletonList(topicPartition));
+	        consumer.seek(topicPartition, sendMessage.getOffset());
+	        
+	        List<ConsumerRecord<String, String>> records = new ArrayList<>();
 
-        try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
-        	TopicPartition topicPartition = new TopicPartition(sendMessage.getTopic(), sendMessage.getPartition());
-			consumer.assign(Collections.singletonList(topicPartition));
-			consumer.seek(topicPartition, sendMessage.getOffset());
-			
-			    List<ConsumerRecord<String, String>> records = new ArrayList<>();
+	        while (true) {
+	            ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofSeconds(1));
 
-			    while (true) {
-	                ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofSeconds(1));
-
-	                for (ConsumerRecord<String, String> record : consumerRecords) {
-	                	
-	                	String value = record.value().toLowerCase();
-	                    if (value.contains(sendMessage.getMessage())) {
+	            for (ConsumerRecord<String, String> record : consumerRecords) {
+	                if (record.value() != null) {
+	                    String value = record.value().toLowerCase();
+	                    if (value.contains(sendMessage.getMessage().toLowerCase())) {
 	                        records.add(record);
 	                    }
-	                    
-	                }
-
-	                if (consumerRecords.isEmpty()) {
-	                    break;
 	                }
 	            }
 
-			    return records;
-		}
-    }
+	            if (consumerRecords.isEmpty()) {
+	                break;
+	            }
+	        }
+
+	        return records;
+	    }
+	}
 	
 	public boolean send(SendMessage sendMessage) {
         String idMessage = UUID.randomUUID().toString();
@@ -145,15 +148,35 @@ public class KafkaMessageService {
             kafkaTemplate.send(sendMessage.getTopic(), sendMessage.getPartition(), idMessage, sendMessage.getMessage()).get();
             return true;
         } catch (Exception e) {
-//            MessageEntity messageEntity = new MessageEntity();
-//            messageEntity.setMessageId(idMessage);
-//            messageEntity.setAttempts(1);
-//            messageEntity.setTopicKafka(sendMessage.getTopic());
-//            messageEntity.setMessage(sendMessage.getMessage());
-//            messageEntity.setApplication(servletContext.getContextPath());
-//            messageEntity.setStatus("PENDING");
-//            departmentPersistenceAdapter.saveMessageError(messageEntity);
-//            log.error("ERROR ENVIANDO MENSAJE", e);
+            MessageEntity messageEntity = new MessageEntity();
+            messageEntity.setMessageId(idMessage);
+            messageEntity.setAttempts(1);
+            messageEntity.setTopicKafka(sendMessage.getTopic());
+            messageEntity.setMessage(sendMessage.getMessage());
+            messageEntity.setApplication(servletContext.getContextPath());
+            messageEntity.setStatus("PENDING");
+            adminKafkaPersistenceAdapter.saveMessageError(messageEntity);
+            log.error("ERROR ENVIANDO MENSAJE", e);
+            return false;
+        }
+    }
+	
+	public boolean reSend(LogMessageChange logMessageChange) {
+        String idMessage = UUID.randomUUID().toString();
+        try {
+            kafkaTemplate.send(logMessageChange.getTopic(), logMessageChange.getPartition(), idMessage, logMessageChange.getNewMessage()).get();
+            adminKafkaPersistenceAdapter.logMessageRelaunch(logMessageChange);
+            return true;
+        } catch (Exception e) {
+            MessageEntity messageEntity = new MessageEntity();
+            messageEntity.setMessageId(idMessage);
+            messageEntity.setAttempts(1);
+            messageEntity.setTopicKafka(logMessageChange.getTopic());
+            messageEntity.setMessage(logMessageChange.getNewMessage());
+            messageEntity.setApplication(servletContext.getContextPath());
+            messageEntity.setStatus("PENDING-RELAUNCH");
+            adminKafkaPersistenceAdapter.saveMessageError(messageEntity);
+            log.error("ERROR ENVIANDO MENSAJE", e);
             return false;
         }
     }
