@@ -30,8 +30,10 @@ import org.springframework.stereotype.Service;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import co.com.famisanar.kafka.topics.application.ports.in.IKafkaTopics;
+
 @Service
-public class KafkaTopicsService {
+public class KafkaTopicsService implements IKafkaTopics{
 
 	@Autowired
     private KafkaAdmin kafkaAdmin;
@@ -81,13 +83,20 @@ public class KafkaTopicsService {
             Map<String, Map<String, Object>> topicDetailsMap = new HashMap<>();
             List<Map<String, Object>> topicDetailsList = null;
             for (String topicName : topicNames) {
+            	
                 TopicDescription topicDescription = topicDescriptions.get(topicName);
-                Set<String> consumers = consumerGroupDescriptions.values().stream()
-                    .flatMap(cg -> cg.members().stream())
-                    .flatMap(member -> member.assignment().topicPartitions().stream())
-                    .filter(tp -> tp.topic().equals(topicName))
-                    .map(tp -> tp.topic())
-                    .collect(Collectors.toSet());
+                
+                Set<Map<String, Object>> consumers = consumerGroupDescriptions.values().stream()
+                	    .filter(cg -> cg.members().stream()
+                	        .flatMap(member -> member.assignment().topicPartitions().stream())
+                	        .anyMatch(tp -> tp.topic().equals(topicName)))
+                	    .map(cg -> {
+                	        Map<String, Object> consumerInfo = new HashMap<>();
+                	        consumerInfo.put("consumerGroup", cg.groupId()); // Nombre del grupo de consumidores
+                	        consumerInfo.put("threadCount", cg.members().size()); // Número de hilos (consumidores) activos en este grupo
+                	        return consumerInfo;
+                	    })
+                	    .collect(Collectors.toSet());
 
                 // Calcular el total de mensajes
                 long totalMessages = 0;

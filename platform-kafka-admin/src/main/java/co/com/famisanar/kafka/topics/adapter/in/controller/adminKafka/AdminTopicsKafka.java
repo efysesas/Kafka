@@ -10,28 +10,28 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import co.com.famisanar.kafka.shared.annotations.CustomRestController;
-import co.com.famisanar.kafka.topics.application.services.KafkaTopicsService;
+import co.com.famisanar.kafka.topics.application.ports.in.IKafkaTopics;
 
 @CustomRestController
 @RequestMapping("/kafka")
 public class AdminTopicsKafka {
 	
 	@Autowired
-    private KafkaTopicsService kafkaService;
+    private IKafkaTopics iKafkaTopics;
     
-    @GetMapping("/topics")
-    public String getTopicDetails() throws ExecutionException, InterruptedException {
-        return kafkaService.getTopicDetails();
-    }
+	@GetMapping("/topics")
+	public String getTopicDetails() throws ExecutionException, InterruptedException {
+	    return iKafkaTopics.getTopicDetails();
+	}
     
     @GetMapping("/topics/search")
     public String searchTopics(@RequestParam String topic) throws ExecutionException, InterruptedException {
-        return kafkaService.searchTopics(topic);
+        return iKafkaTopics.searchTopics(topic);
     }
     
     @GetMapping("/{topicName}/details/byTopic")
     public Map<String, Object> getTopicDetails(@PathVariable String topicName) throws ExecutionException, InterruptedException {
-        return kafkaService.getTopicDetails(topicName);
+        return iKafkaTopics.getTopicDetails(topicName);
     }
     
 }

@@ -1,6 +1,7 @@
 package co.com.famisanar.kafka.topics.adapter.in.controller.adminKafka;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +36,7 @@ public class AdminConsumersKafka {
     }
     
     @GetMapping("/topicsByConsumer/{consumerGroupId}")
-    public List<String> getTopicsByConsumer(@PathVariable String consumerGroupId) {
+    public List<Map<String, Object>> getTopicsByConsumer(@PathVariable String consumerGroupId) {
         return kafkaConsumersService.getTopicsByConsumer(consumerGroupId);
     }
     
