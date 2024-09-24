@@ -42,9 +42,9 @@ public class AdminKafkaPersistenceAdapter implements IAdminKafkaPersistenceAdapt
     public ResponseEntity<String> logMessageRelaunch(LogMessageChange logMessageChange){
     	try {
     		LogsRelaunch logsRelaunch = new LogsRelaunch();
-    		logsRelaunch.setIdentification(logMessageChange.getIdentification());
     		logsRelaunch.setNewMessage(logMessageChange.getNewMessage());
     		logsRelaunch.setPartition(logMessageChange.getPartition());
+    		logsRelaunch.setIdNewMessage(logMessageChange.getIdMessagePrevious());
     		logsRelaunch.setPreviousMessage(logMessageChange.getPreviousMessage());
     		logsRelaunch.setTopic(logMessageChange.getTopic());
     		logsRelaunch.setUserDomain(logMessageChange.getUserDomain());

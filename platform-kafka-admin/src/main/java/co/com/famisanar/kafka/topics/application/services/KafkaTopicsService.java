@@ -10,7 +10,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.ListConsumerGroupsResult;
@@ -23,7 +22,6 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Service;
 
@@ -38,18 +36,13 @@ public class KafkaTopicsService implements IKafkaTopics{
 	@Autowired
     private KafkaAdmin kafkaAdmin;
 	
-	private AdminClient adminClient;
-	
-	@Value("${spring.kafka.bootstrap-servers}")
-    private String bootstrapServers;
+	@Autowired
+    private KafkaBrokerChange kafkaBrokerChange;
 
-    public KafkaTopicsService(KafkaAdmin kafkaAdmin) {
-        this.adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
-    }
     
     public String getTopicDetails() throws ExecutionException, InterruptedException {
-        try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
-            // Obtener la lista de nombres de tópicos
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
+    	// Obtener la lista de nombres de tópicos
             ListTopicsResult listTopicsResult = adminClient.listTopics();
             Set<String> topicNames = listTopicsResult.names().get();
 
@@ -124,7 +117,7 @@ public class KafkaTopicsService implements IKafkaTopics{
             String json = gson.toJson(topicDetailsList);
 
             return json;
-        }
+        
     }
     
     public Set<String> listTopics() throws ExecutionException, InterruptedException {
@@ -199,12 +192,14 @@ public class KafkaTopicsService implements IKafkaTopics{
     }
     
     public int countTopics() throws ExecutionException, InterruptedException {
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
         ListTopicsResult topicsResult = adminClient.listTopics();
         Set<String> topics = topicsResult.names().get();
         return topics.size();
     }
     
     public String searchTopics(String searchTerm) throws ExecutionException, InterruptedException {
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
         // Obtener la lista de nombres de tópicos
         ListTopicsResult listTopicsResult = adminClient.listTopics();
         Set<String> topicNames = listTopicsResult.names().get();
@@ -276,7 +271,10 @@ public class KafkaTopicsService implements IKafkaTopics{
     }
     
     public Map<String, Object> getTopicDetails(String topicName) throws ExecutionException, InterruptedException {
-        // Crear una lista con el nombre del tópico que queremos describir
+       
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
+    	
+    	// Crear una lista con el nombre del tópico que queremos describir
         List<String> topicNames = Collections.singletonList(topicName);
         
         // Llamar a describeTopics con una lista de un solo tópico

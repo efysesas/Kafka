@@ -8,13 +8,13 @@ spring:
   application:
     name: platform-kafka-admin
     
-  kafka:
-   bootstrap-servers: 20.85.127.35:9092
+  #kafka:
+   #bootstrap-servers: 20.85.127.35:9092
   #kafka:
    #bootstrap-servers: 192.168.0.6:9092
-    
+   
   jpa:
-    hibernate.ddl-auto: none
+    hibernate.ddl-auto: update
     database: oracle
     database-platform: org.hibernate.dialect.OracleDialect
   datasource:

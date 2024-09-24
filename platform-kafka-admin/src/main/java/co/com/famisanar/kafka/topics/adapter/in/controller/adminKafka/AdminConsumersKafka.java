@@ -21,7 +21,7 @@ public class AdminConsumersKafka {
     private KafkaConsumersService kafkaConsumersService;
 	
     @GetMapping("/consumers")
-    public String getConsumersAndTopics() {
+    public String getConsumersAndTopics() throws InterruptedException, ExecutionException {
         return kafkaConsumersService.getConsumersAndTopics();
     }
     
@@ -36,7 +36,7 @@ public class AdminConsumersKafka {
     }
     
     @GetMapping("/topicsByConsumer/{consumerGroupId}")
-    public List<Map<String, Object>> getTopicsByConsumer(@PathVariable String consumerGroupId) {
+    public List<Map<String, Object>> getTopicsByConsumer(@PathVariable String consumerGroupId) throws InterruptedException, ExecutionException {
         return kafkaConsumersService.getTopicsByConsumer(consumerGroupId);
     }
     

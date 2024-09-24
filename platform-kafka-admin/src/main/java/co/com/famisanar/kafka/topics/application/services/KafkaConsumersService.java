@@ -11,7 +11,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.clients.admin.ConsumerGroupListing;
 import org.apache.kafka.clients.admin.DescribeConsumerGroupsResult;
@@ -20,8 +19,7 @@ import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
@@ -29,17 +27,12 @@ import com.google.gson.GsonBuilder;
 
 @Service
 public class KafkaConsumersService {
-	
-    @Value("${spring.kafka.bootstrap-servers}")
-    private String bootstrapServers;
 
-	private final AdminClient adminClient;
-
-    public KafkaConsumersService(KafkaAdmin kafkaAdmin) {
-        this.adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
-    }
+	@Autowired
+    private KafkaBrokerChange kafkaBrokerChange;
 
     public List<String> listConsumerGroups() throws ExecutionException, InterruptedException {
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
         ListConsumerGroupsResult groupsResult = adminClient.listConsumerGroups();
         List<ConsumerGroupListing> groupListings = new ArrayList<>(groupsResult.all().get());
         List<String> groupIds = new ArrayList<>();
@@ -50,14 +43,14 @@ public class KafkaConsumersService {
     }
     
     public int countConsumerGroups() throws ExecutionException, InterruptedException {
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
     	ListConsumerGroupsResult groupsResult = adminClient.listConsumerGroups();
         List<ConsumerGroupListing> groupListings = (List<ConsumerGroupListing>) groupsResult.all().get();
         return groupListings.size();
     }
     
     public String searchConsumerGroups(String searchTerm) throws ExecutionException, InterruptedException {
-        try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
-            // Obtener los grupos de consumidores
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;// Obtener los grupos de consumidores
             ListConsumerGroupsResult groupsResult = adminClient.listConsumerGroups();
             
             // Filtrar por el término de búsqueda
@@ -104,14 +97,10 @@ public class KafkaConsumersService {
             // Convertir la lista a JSON
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             return gson.toJson(consumerGroupDetailsList);
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException("Error fetching Kafka consumer groups details", e);
-        }
     }
     
-    public String getConsumersAndTopics() {
-        try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
-            // Obtener los grupos de consumidores
+    public String getConsumersAndTopics() throws InterruptedException, ExecutionException {
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;// Obtener los grupos de consumidores
             ListConsumerGroupsResult consumerGroupsResult = adminClient.listConsumerGroups();
             Set<String> consumerGroups = consumerGroupsResult.all().get().stream()
                 .map(ConsumerGroupListing::groupId)
@@ -146,14 +135,11 @@ public class KafkaConsumersService {
             // Convertir la lista a JSON
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             return gson.toJson(consumerDetailsList);
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException("Error fetching Kafka consumers and topics", e);
-        }
     }    
     
-    public List<Map<String, Object>> getTopicsByConsumer(String consumerGroupId) {
-        try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
+    public List<Map<String, Object>> getTopicsByConsumer(String consumerGroupId) throws InterruptedException, ExecutionException {
             // Obtener la descripción del grupo de consumidores específico
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
             DescribeConsumerGroupsResult describeGroupsResult = adminClient.describeConsumerGroups(Collections.singletonList(consumerGroupId));
             Map<String, ConsumerGroupDescription> consumerGroupDescriptions = describeGroupsResult.all().get();
 
@@ -204,14 +190,10 @@ public class KafkaConsumersService {
             }
 
             return topicsInfo;
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException("Error fetching Kafka topics for consumer group", e);
-        }
     }
 
-    private long getTotalMessagesForTopic(String topic) {
-        try (AdminClient adminClient = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers))) {
-            // Obtener la descripción de las particiones del tópico
+    private long getTotalMessagesForTopic(String topic) throws InterruptedException, ExecutionException {
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;// Obtener la descripción de las particiones del tópico
             @SuppressWarnings("deprecation")
 			List<TopicPartitionInfo> partitionInfos = adminClient.describeTopics(Collections.singletonList(topic)).all().get().get(topic).partitions();
 
@@ -227,9 +209,6 @@ public class KafkaConsumersService {
             }
 
             return totalMessages;
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException("Error fetching total messages for topic: " + topic, e);
-        }
     }
     
 }

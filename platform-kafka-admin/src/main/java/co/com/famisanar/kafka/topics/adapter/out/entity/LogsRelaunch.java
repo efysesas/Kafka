@@ -15,15 +15,15 @@ import lombok.Data;
 @Table(name = "LOG_MESSAGE_RELAUNCH")
 public class LogsRelaunch {
 	
-	@Id
-    @Column(name = "USER_ID")
-    private Long identification;
 	@Column(name = "NAME_TOPIC", length = 60)
 	private String topic;
 	@Column(name = "PARTITION", length = 2)
 	private int partition;
 	@Column(name = "NEW_MESSAGE", length = 200)
 	private String newMessage;
+	@Id
+	@Column(name = "ID_NEW_MESSAGE", length = 200)
+	private String idNewMessage;
 	@Column(name = "PREVIOUS_MESSAGE", length = 200)
 	private String previousMessage;
 	@Column(name = "DOMAIN_MODIFIER", length = 50)
