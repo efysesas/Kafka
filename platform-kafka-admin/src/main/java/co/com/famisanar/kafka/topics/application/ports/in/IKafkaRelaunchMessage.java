@@ -16,5 +16,6 @@ public interface IKafkaRelaunchMessage {
 	public List<ConsumerRecord<String, String>> getMessagesByValue(SendMessage sendMessage);
 	public boolean send(SendMessage sendMessage);
 	public boolean reSend(LogMessageChange logMessageChange);
+	public List<ConsumerRecord<String, String>> searchMessagesById(String messageId);
 	
 }

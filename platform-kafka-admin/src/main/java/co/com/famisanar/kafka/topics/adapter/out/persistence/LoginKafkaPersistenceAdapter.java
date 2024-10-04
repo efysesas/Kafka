@@ -31,14 +31,14 @@ public class LoginKafkaPersistenceAdapter implements ILoginPersistenceAdapter{
 	RespuestaHttpHandler respuestaHttpHandler;
 	
 	@Override
-	public ResponseEntity<String> registerUser(LoginEntity loginEntity) {
+	public ResponseEntity<Object> registerUser(LoginEntity loginEntity) {
 		if (!iLoginRepository.existsById(loginEntity.getIdentification())) {
 			iLoginRepository.save(loginEntity);
 			return ResponseEntity.status(HttpStatus.OK)
-					.body(respuestaHttpHandler.respuestaPeticiones(HttpStatus.CREATED, "Creacion Ok", "201", null));
+					.body(respuestaHttpHandler.responseExceptions(HttpStatus.CREATED, "Creacion Ok", "201", null));
 		} else {
 			return ResponseEntity.status(HttpStatus.CONFLICT).body(respuestaHttpHandler
-					.respuestaPeticiones(HttpStatus.CONFLICT, "Ya existe alguien con el mismo documento", "409", null));
+					.responseExceptions(HttpStatus.CONFLICT, "Ya existe alguien con el mismo documento", "409", null));
 		}
 	}
 
@@ -56,7 +56,7 @@ public class LoginKafkaPersistenceAdapter implements ILoginPersistenceAdapter{
 	                LoginRegister loginRegister = modelMapper.map(loginEntity, LoginRegister.class);
 	                return ResponseEntity.ok(loginRegister);
 	            } else {
-	                String errorJson = respuestaHttpHandler.respuestaPeticiones(
+	                Object errorJson = respuestaHttpHandler.responseExceptions(
 	                        HttpStatus.BAD_REQUEST, 
 	                        "Usuario o contraseña incorrectos", 
 	                        "Error", 
@@ -65,7 +65,7 @@ public class LoginKafkaPersistenceAdapter implements ILoginPersistenceAdapter{
 	                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorJson);
 	            }
 	        } else {
-	            String errorJson = respuestaHttpHandler.respuestaPeticiones(
+	            Object errorJson = respuestaHttpHandler.responseExceptions(
 	                    HttpStatus.BAD_REQUEST, 
 	                    "Usuario de dominio no existe", 
 	                    "Error", 
@@ -75,7 +75,7 @@ public class LoginKafkaPersistenceAdapter implements ILoginPersistenceAdapter{
 	        }
 	    } catch (Exception e) {
 	        e.printStackTrace();
-	        String errorJson = respuestaHttpHandler.respuestaPeticiones(
+	        Object errorJson = respuestaHttpHandler.responseExceptions(
 	                HttpStatus.INTERNAL_SERVER_ERROR, 
 	                "Error interno del servidor", 
 	                "Error", 

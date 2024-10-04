@@ -22,7 +22,7 @@ public class LoginService implements IKafkaLoginAdmin{
 	public ResponseEntity<Object> getUserDetails(String user,String pass, String userDomain){
 		return iLoginPersistenceAdapter.getUserLogin(user, pass, userDomain);
 	}
-	public ResponseEntity<String> registerUser(LoginRegister loginRegister) {
+	public ResponseEntity<Object> registerUser(LoginRegister loginRegister) {
 		LoginEntity loginEntity = modelMapper.map(loginRegister, LoginEntity.class);
 		return iLoginPersistenceAdapter.registerUser(loginEntity);
 	}

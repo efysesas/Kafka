@@ -6,5 +6,5 @@ import co.com.famisanar.kafka.topics.adapter.in.dto.loginKafka.LoginRegister;
 
 public interface IKafkaLoginAdmin {
 	public ResponseEntity<Object> getUserDetails(String user,String pass, String userDomain);
-	public ResponseEntity<String> registerUser(LoginRegister loginRegister);
+	public ResponseEntity<Object> registerUser(LoginRegister loginRegister);
 }

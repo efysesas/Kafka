@@ -32,7 +32,7 @@ public class AdminKafkaLogin {
     }
 	
 	@PostMapping("/user/register")
-    public ResponseEntity<String> registerUser(@RequestBody LoginRegister loginRegister) throws ExecutionException, InterruptedException {
+    public ResponseEntity<Object> registerUser(@RequestBody LoginRegister loginRegister) throws ExecutionException, InterruptedException {
 		loginRegister.setPasswordKafka(passwordEncoder.encode(loginRegister.getPasswordKafka()));
 		return iKafkaLoginAdmin.registerUser(loginRegister);
     }

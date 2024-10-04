@@ -1,7 +1,7 @@
 server:
   port: 8082
   servlet:
-    context-path: /platform
+    context-path: /platform-kafka-admin
   cors: '*'
 
 spring:
@@ -10,11 +10,9 @@ spring:
     
   #kafka:
    #bootstrap-servers: 20.85.127.35:9092
-  #kafka:
-   #bootstrap-servers: 192.168.0.6:9092
    
   jpa:
-    hibernate.ddl-auto: update
+    hibernate.ddl-auto: none
     database: oracle
     database-platform: org.hibernate.dialect.OracleDialect
   datasource:

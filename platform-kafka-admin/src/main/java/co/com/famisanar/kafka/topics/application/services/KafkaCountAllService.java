@@ -19,8 +19,10 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Service;
 
+import co.com.famisanar.kafka.topics.application.ports.in.IKafkaCountAll;
+
 @Service
-public class KafkaCountAllService {
+public class KafkaCountAllService implements IKafkaCountAll{
 	
 	@Autowired
     private KafkaAdmin kafkaAdmin;
@@ -29,7 +31,7 @@ public class KafkaCountAllService {
 	private ConsumerFactory<String, String> consumerFactory;
 
     public int getTopicCount() throws ExecutionException, InterruptedException {
-        try (AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
+    	try (AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
             ListTopicsResult listTopicsResult = adminClient.listTopics();
             Set<String> topics = listTopicsResult.names().get();
             return topics.size();

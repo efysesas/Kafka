@@ -177,4 +177,46 @@ public class KafkaMessageService implements IKafkaRelaunchMessage{
         }
     }
 	
+	public List<ConsumerRecord<String, String>> searchMessagesById(String messageId) {
+        List<ConsumerRecord<String, String>> matchingRecords = new ArrayList<>();
+
+        // Crear el consumidor de Kafka
+        try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
+            // Obtener todos los topics
+            List<String> topics = new ArrayList<>(consumer.listTopics().keySet());
+
+            for (String topic : topics) {
+                // Obtener todas las particiones del topic
+                List<TopicPartition> partitions = new ArrayList<>();
+                consumer.partitionsFor(topic).forEach(partitionInfo ->
+                        partitions.add(new TopicPartition(topic, partitionInfo.partition())));
+
+                for (TopicPartition partition : partitions) {
+                    // Asignar la partición y mover al primer offset
+                    consumer.assign(Collections.singletonList(partition));
+                    consumer.seekToBeginning(Collections.singletonList(partition));
+
+                    // Iterar sobre los mensajes hasta encontrar el ID
+                    while (true) {
+                        ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofMillis(100));
+
+                        for (ConsumerRecord<String, String> record : consumerRecords) {
+                            // Comparar el ID (asumido que está en la clave, modificar si está en el valor)
+                            if (record.key().equals(messageId)) {
+                                matchingRecords.add(record);
+                            }
+                        }
+
+                        // Si no hay más mensajes en la partición, salir del bucle
+                        if (consumerRecords.isEmpty()) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return matchingRecords;
+    }
+	
 }
