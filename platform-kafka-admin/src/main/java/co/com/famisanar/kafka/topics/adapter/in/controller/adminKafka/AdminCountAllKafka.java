@@ -1,6 +1,7 @@
 package co.com.famisanar.kafka.topics.adapter.in.controller.adminKafka;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
@@ -29,7 +30,7 @@ public class AdminCountAllKafka {
 					@Content(mediaType = "application/json") }),
 			@ApiResponse(responseCode = "500", description = "Error interno del servidor", content = {
 					@Content(mediaType = "application/json") }) })
-    public int getTopicCount() throws Exception {
+    public ResponseEntity<Object> getTopicCount() throws Exception {
         return iKafkaCountAll.getTopicCount();
     }
 	
@@ -44,7 +45,7 @@ public class AdminCountAllKafka {
 					@Content(mediaType = "application/json") }),
 			@ApiResponse(responseCode = "500", description = "Error interno del servidor", content = {
 					@Content(mediaType = "application/json") }) })
-    public int getTotalPartitionCount() throws Exception {
+    public ResponseEntity<Object> getTotalPartitionCount() throws Exception {
         return iKafkaCountAll.getTotalPartitionCount();
     }
 	
@@ -59,7 +60,7 @@ public class AdminCountAllKafka {
 					@Content(mediaType = "application/json") }),
 			@ApiResponse(responseCode = "500", description = "Error interno del servidor", content = {
 					@Content(mediaType = "application/json") }) })
-    public int getTotalConsumerCount() throws Exception {
+    public ResponseEntity<Object> getTotalConsumerCount() throws Exception {
         return iKafkaCountAll.getTotalConsumerCount();
     }
 	
@@ -74,7 +75,7 @@ public class AdminCountAllKafka {
 					@Content(mediaType = "application/json") }),
 			@ApiResponse(responseCode = "500", description = "Error interno del servidor", content = {
 					@Content(mediaType = "application/json") }) })
-    public int getTotalMessageCount() throws Exception {
+    public ResponseEntity<Object> getTotalMessageCount() throws Exception {
         return iKafkaCountAll.getTotalMessageCount();
     }
 	

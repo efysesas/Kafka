@@ -22,15 +22,15 @@ import org.apache.kafka.common.TopicPartitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import co.com.famisanar.kafka.shared.annotations.UseCase;
 import co.com.famisanar.kafka.topics.adapter.out.exceptions.RespuestaHttpHandler;
 import co.com.famisanar.kafka.topics.application.ports.in.IKafkaConsumers;
 
-@Service
+@UseCase
 public class KafkaConsumersService implements IKafkaConsumers{
 
 	@Autowired
@@ -75,45 +75,37 @@ public class KafkaConsumersService implements IKafkaConsumers{
 	    AdminClient adminClient = kafkaBrokerChange.adminClient;
 		ListConsumerGroupsResult groupsResult = adminClient.listConsumerGroups();
 
-		// Filtrar por el término de búsqueda
 		List<ConsumerGroupListing> groupListings = (List<ConsumerGroupListing>) groupsResult.all().get();
-		Set<String> consumerGroupIds = groupListings.stream()
+		Set<String> consumerGroupIds = groupListings.stream()// Filtrar por el término de búsqueda
 				.filter(groupListing -> groupListing.groupId().contains(searchTerm)).map(ConsumerGroupListing::groupId)
 				.collect(Collectors.toSet());
 
-		// Obtener la descripción de los grupos de consumidores
-		Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient
+		Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient// Obtener la descripción de los grupos de consumidores
 				.describeConsumerGroups(consumerGroupIds).all().get();
 
-		// Mapear detalles de los grupos de consumidores a una lista
 		List<Map<String, Object>> consumerGroupDetailsList = consumerGroupDescriptions.entrySet().stream()
 				.map(entry -> {
-					Map<String, Object> details = new HashMap<>();
+					Map<String, Object> details = new HashMap<>();// Mapear detalles de los grupos de consumidores a una lista
 					ConsumerGroupDescription description = entry.getValue();
 
 					List<String> consumerIds = description.members().stream().map(member -> member.consumerId())																			// consumidor
 							.collect(Collectors.toList());
 					details.put("consumerIds", consumerIds);
 
-					// Obtener los tópicos asociados
-					Set<String> topics = description.members().stream()
+					Set<String> topics = description.members().stream()// Obtener los tópicos asociados
 							.flatMap(member -> member.assignment().topicPartitions().stream())
 							.map(TopicPartition::topic).collect(Collectors.toSet());
 					details.put("topics", topics);
 
-					// Verificar si el grupo de consumidores está activo
-					details.put("active", !description.members().isEmpty());
+					details.put("active", !description.members().isEmpty());// Verificar si el grupo de consumidores está activo
 
-					// Obtener la cantidad de miembros en el grupo
-					details.put("threadCount", description.members().size());
+					details.put("threadCount", description.members().size());// Obtener la cantidad de miembros en el grupo
 
-					// Agregar el nombre del grupo de consumidores
-					details.put("name", entry.getKey());
+					details.put("name", entry.getKey());// Agregar el nombre del grupo de consumidores
 
 					return details;
 				}).collect(Collectors.toList());
 
-		// Convertir la lista a JSON
 		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		return ResponseEntity.status(HttpStatus.OK)
 				.body(gson.toJson(consumerGroupDetailsList));
@@ -129,30 +121,25 @@ public class KafkaConsumersService implements IKafkaConsumers{
 		Set<String> consumerGroups = consumerGroupsResult.all().get().stream().map(ConsumerGroupListing::groupId)
 				.collect(Collectors.toSet());
 
-		// Obtener la descripción de los grupos de consumidores
 		Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient
-				.describeConsumerGroups(consumerGroups).all().get();
+				.describeConsumerGroups(consumerGroups).all().get();// Obtener la descripción de los grupos de consumidores
 
-		// Mapear consumidores a topics con conteo
 		List<Map<String, Object>> consumerDetailsList = consumerGroupDescriptions.entrySet().stream().map(entry -> {
-			Map<String, Object> details = new HashMap<>();
+			Map<String, Object> details = new HashMap<>();// Mapear consumidores a topics con conteo
 			ConsumerGroupDescription description = entry.getValue();
 
-			// Contar los topics únicos asignados a cada consumidor
-			long topicCount = description.members().stream()
+			long topicCount = description.members().stream()// Contar los topics únicos asignados a cada consumidor
 					.flatMap(member -> member.assignment().topicPartitions().stream()).map(TopicPartition::topic)
 					.distinct().count();
 
 			details.put("name", entry.getKey());
 			details.put("topicCount", (int) topicCount);
 			details.put("active", !description.members().isEmpty());
-			// Obtener la cantidad de miembros en el grupo
-			details.put("memberCount", description.members().size());
+			details.put("memberCount", description.members().size());// Obtener la cantidad de miembros en el grupo
 
 			return details;
 		}).collect(Collectors.toList());
 
-		// Convertir la lista a JSON
 		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		return ResponseEntity.status(HttpStatus.OK)
 				.body(gson.toJson(consumerDetailsList));
@@ -174,33 +161,27 @@ public class KafkaConsumersService implements IKafkaConsumers{
 			throw new NoSuchElementException("Consumer group not found: " + consumerGroupId);
 		}
 
-		// Mapear información de los tópicos
-		List<Map<String, Object>> topicsInfo = new ArrayList<>();
+		List<Map<String, Object>> topicsInfo = new ArrayList<>();// Mapear información de los tópicos
 
-		// Obtener información de los tópicos
-		for (String topic : description.members().stream()
+		for (String topic : description.members().stream()// Obtener información de los tópicos
 				.flatMap(member -> member.assignment().topicPartitions().stream()).map(TopicPartition::topic).distinct()
 				.collect(Collectors.toList())) {
 
-			// Obtener información sobre el tópico
-			@SuppressWarnings("deprecation")
+			@SuppressWarnings("deprecation")// Obtener información sobre el tópico
 			TopicDescription topicDescription = adminClient.describeTopics(Collections.singletonList(topic)).all().get()
 					.get(topic);
 			if (topicDescription == null)
 				continue;
 
-			// Obtener total de particiones y total de mensajes
-			int totalPartitions = topicDescription.partitions().size();
+			int totalPartitions = topicDescription.partitions().size();// Obtener total de particiones y total de mensajes
 			long totalMessages = getTotalMessagesForTopic(topic,adminClient); // Método que debes implementar para contar mensajes
 
-			// Construir el objeto del tópico
-			Map<String, Object> topicDetails = new HashMap<>();
+			Map<String, Object> topicDetails = new HashMap<>();// Construir el objeto del tópico
 			topicDetails.put("totalPartitions", totalPartitions);
 			topicDetails.put("totalMessages", totalMessages);
 			topicDetails.put("topicName", topic);
 
-			// Agregar información de consumidores
-			List<Map<String, Object>> consumers = new ArrayList<>();
+			List<Map<String, Object>> consumers = new ArrayList<>();// Agregar información de consumidores
 			for (ConsumerGroupDescription groupDescription : consumerGroupDescriptions.values()) {
 				if (groupDescription.members().stream().anyMatch(member -> member.assignment().topicPartitions()
 						.stream().anyMatch(tp -> tp.topic().equals(topic)))) {
@@ -224,15 +205,14 @@ public class KafkaConsumersService implements IKafkaConsumers{
 		List<TopicPartitionInfo> partitionInfos = adminClient.describeTopics(Collections.singletonList(topic)).all()
 				.get().get(topic).partitions();
 
-		// Obtener el total de mensajes en el tópico
-		long totalMessages = 0;
+		long totalMessages = 0;// Obtener el total de mensajes en el tópico
 		for (TopicPartitionInfo partitionInfo : partitionInfos) {
 			int partitionId = partitionInfo.partition();
 			TopicPartition topicPartition = new TopicPartition(topic, partitionId);
 
-			// Obtener el último offset
+			
 			long endOffset = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.latest()))
-					.all().get().get(topicPartition).offset();
+					.all().get().get(topicPartition).offset();// Obtener el último offset
 			totalMessages += endOffset; // Contar desde el inicio hasta el último offset
 		}
 

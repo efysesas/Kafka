@@ -15,31 +15,44 @@ import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Service;
 
+import co.com.famisanar.kafka.topics.adapter.out.exceptions.RespuestaHttpHandler;
 import co.com.famisanar.kafka.topics.application.ports.in.IKafkaCountAll;
 
 @Service
 public class KafkaCountAllService implements IKafkaCountAll{
 	
 	@Autowired
-    private KafkaAdmin kafkaAdmin;
+    private KafkaBrokerChange kafkaBrokerChange;
+	
+	@Autowired
+	RespuestaHttpHandler respuestaHttpHandler;
 	
 	@Autowired
 	private ConsumerFactory<String, String> consumerFactory;
 
-    public int getTopicCount() throws ExecutionException, InterruptedException {
-    	try (AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
-            ListTopicsResult listTopicsResult = adminClient.listTopics();
-            Set<String> topics = listTopicsResult.names().get();
-            return topics.size();
-        }
+	public ResponseEntity<Object> getTopicCount() throws ExecutionException, InterruptedException {
+		if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
+        ListTopicsResult topicsResult = adminClient.listTopics();
+        Set<String> topics = topicsResult.names().get();
+        return ResponseEntity.status(HttpStatus.OK)
+				.body(topics.size());
     }
     
-    public int getTotalPartitionCount() throws ExecutionException, InterruptedException {
-        try (AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
+    public ResponseEntity<Object> getTotalPartitionCount() throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
             // Obtener la lista de nombres de tópicos
             ListTopicsResult listTopicsResult = adminClient.listTopics();
             Set<String> topicNames = listTopicsResult.names().get();
@@ -55,21 +68,29 @@ public class KafkaCountAllService implements IKafkaCountAll{
                 totalPartitions += topicDescription.partitions().size();
             }
 
-            return totalPartitions;
-        }
+            return ResponseEntity.status(HttpStatus.OK)
+					.body(totalPartitions);
+
     }
     
-    public int getTotalConsumerCount() throws ExecutionException, InterruptedException {
-        try (AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
+    public ResponseEntity<Object> getTotalConsumerCount() throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
             ListConsumerGroupsResult listConsumerGroupsResult = adminClient.listConsumerGroups();
             Collection<ConsumerGroupListing> consumerGroups = listConsumerGroupsResult.all().get();
-            return consumerGroups.size();
-        }
+            return ResponseEntity.status(HttpStatus.OK)
+					.body(consumerGroups.size());
     }
     
-    public int getTotalMessageCount() throws ExecutionException, InterruptedException {
-        try (AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
-            // Obtener la lista de nombres de tópicos
+    public ResponseEntity<Object> getTotalMessageCount() throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;// Obtener la lista de nombres de tópicos
             ListTopicsResult listTopicsResult = adminClient.listTopics();
             Set<String> topicNames = listTopicsResult.names().get();
 
@@ -96,8 +117,10 @@ public class KafkaCountAllService implements IKafkaCountAll{
                     }
                 }
             }
-            return totalMessages;
-        }
+            
+            return ResponseEntity.status(HttpStatus.OK)
+					.body(totalMessages);
+
     }
     
 }

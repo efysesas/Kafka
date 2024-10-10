@@ -22,25 +22,31 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import co.com.famisanar.kafka.topics.adapter.out.exceptions.RespuestaHttpHandler;
 import co.com.famisanar.kafka.topics.application.ports.in.IKafkaTopics;
 
 @Service
 public class KafkaTopicsService implements IKafkaTopics{
-
-	@Autowired
-    private KafkaAdmin kafkaAdmin;
 	
 	@Autowired
     private KafkaBrokerChange kafkaBrokerChange;
+	
+	@Autowired
+	RespuestaHttpHandler respuestaHttpHandler;
 
     
-    public String getTopicDetails() throws ExecutionException, InterruptedException {
+    public ResponseEntity<Object> getTopicDetails() throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
     	AdminClient adminClient = kafkaBrokerChange.adminClient;
     	// Obtener la lista de nombres de tópicos
             ListTopicsResult listTopicsResult = adminClient.listTopics();
@@ -114,20 +120,19 @@ public class KafkaTopicsService implements IKafkaTopics{
             }
             
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            String json = gson.toJson(topicDetailsList);
+            String topicDetailsListJ = gson.toJson(topicDetailsList);
 
-            return json;
+            return ResponseEntity.status(HttpStatus.OK)
+    				.body(topicDetailsListJ);
         
     }
     
-    public Set<String> listTopics() throws ExecutionException, InterruptedException {
-        AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
-        ListTopicsResult topics = adminClient.listTopics();
-        return topics.names().get();
-    }
-    
-    public Map<String, Object> describeTopics(Set<String> topicNames) throws ExecutionException, InterruptedException {
-        AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
+    public ResponseEntity<Object> describeTopics(Set<String> topicNames) throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
      // Obtener la descripción de los topics
         DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(topicNames);
         Map<String, KafkaFuture<TopicDescription>> topicNameValues = describeTopicsResult.topicNameValues();
@@ -188,17 +193,15 @@ public class KafkaTopicsService implements IKafkaTopics{
             topicDescriptions.put(topicDescription.name(), topic);
         }
         
-        return topicDescriptions;
+        return ResponseEntity.status(HttpStatus.OK)
+				.body(topicDescriptions);
     }
     
-    public int countTopics() throws ExecutionException, InterruptedException {
-    	AdminClient adminClient = kafkaBrokerChange.adminClient;
-        ListTopicsResult topicsResult = adminClient.listTopics();
-        Set<String> topics = topicsResult.names().get();
-        return topics.size();
-    }
-    
-    public String searchTopics(String searchTerm) throws ExecutionException, InterruptedException {
+    public ResponseEntity<Object> searchTopics(String searchTerm) throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
     	AdminClient adminClient = kafkaBrokerChange.adminClient;
         // Obtener la lista de nombres de tópicos
         ListTopicsResult listTopicsResult = adminClient.listTopics();
@@ -267,11 +270,15 @@ public class KafkaTopicsService implements IKafkaTopics{
 
         // Convertir la lista a JSON
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        return gson.toJson(topicDetailsList);
+        return ResponseEntity.status(HttpStatus.OK)
+				.body(gson.toJson(topicDetailsList));
     }
     
-    public Map<String, Object> getTopicDetails(String topicName) throws ExecutionException, InterruptedException {
-       
+    public ResponseEntity<Object> getTopicDetails(String topicName) throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
     	AdminClient adminClient = kafkaBrokerChange.adminClient;
     	
     	// Crear una lista con el nombre del tópico que queremos describir
@@ -333,7 +340,8 @@ public class KafkaTopicsService implements IKafkaTopics{
             topicDescriptions.put(topicDescription.name(), topic);
         }
         
-        return topicDescriptions;
+        return ResponseEntity.status(HttpStatus.OK)
+				.body(topicDescriptions);
     }
     
 }

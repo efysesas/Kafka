@@ -1,11 +1,12 @@
 package co.com.famisanar.kafka.topics.application.ports.in;
 
-import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ExecutionException;
+
+import org.springframework.http.ResponseEntity;
 
 public interface IKafkaPartitions {
-	public List<Map<String, Object>> getPartitionDetails(String topic);
-	public int getPartitionCount(String topic);
-	public Map<String, Object> getPartitionSearch(String topic, int partition);
-	public List<Map<String, Object>> getAllPartitionDetails();
+	public ResponseEntity<Object> getPartitionDetails(String topic)throws ExecutionException, InterruptedException;
+	public ResponseEntity<Object> getPartitionCount(String topic)throws ExecutionException, InterruptedException;
+	public ResponseEntity<Object> getPartitionSearch(String topic, int partition)throws ExecutionException, InterruptedException;
+	public ResponseEntity<Object> getAllPartitionDetails()throws ExecutionException, InterruptedException;
 }

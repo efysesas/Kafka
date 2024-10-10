@@ -9,8 +9,13 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.errors.TimeoutException;
-import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
+import co.com.famisanar.kafka.topics.adapter.out.exceptions.RespuestaHttpHandler;
+import co.com.famisanar.kafka.topics.application.ports.in.IKafkaPartitions;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,14 +26,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Service
-public class KafkaPartitionsService {
+public class KafkaPartitionsService implements IKafkaPartitions{
 
-    private AdminClient adminClient;
-
-    public KafkaPartitionsService(KafkaAdmin kafkaAdmin) {
-        this.adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties());
-    }
-
+	@Autowired
+    private KafkaBrokerChange kafkaBrokerChange;
+	
+	@Autowired
+	RespuestaHttpHandler respuestaHttpHandler;
+	
     /**
      * Obtiene los detalles de las particiones de un tópico de Kafka.
      *
@@ -37,8 +42,13 @@ public class KafkaPartitionsService {
      * @throws ExecutionException   Si ocurre un error durante la ejecución
      * @throws InterruptedException Si el hilo es interrumpido
      */
-    public List<Map<String, Object>> getPartitionDetails(String topic) throws ExecutionException, InterruptedException {
-        // Describe el tópico y obtener su descripción
+    public ResponseEntity<Object> getPartitionDetails(String topic) throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
+    	// Describe el tópico y obtener su descripción
         DescribeTopicsResult topicsResult = adminClient.describeTopics(Collections.singletonList(topic));
         @SuppressWarnings("deprecation")
         TopicDescription topicDescription = topicsResult.all().get().get(topic);
@@ -97,10 +107,16 @@ public class KafkaPartitionsService {
             partitionDetailsList.add(partitionInfoMap);
         }
 
-        return partitionDetailsList;
+        return ResponseEntity.status(HttpStatus.OK)
+				.body(partitionDetailsList);
     }
     
-    public int getPartitionCount(String topic) throws ExecutionException, InterruptedException {
+    public ResponseEntity<Object> getPartitionCount(String topic) throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
     	int countPartition = 0;
         // Describe el tópico y obtener su descripción
         DescribeTopicsResult topicsResult = adminClient.describeTopics(Collections.singletonList(topic));
@@ -116,7 +132,8 @@ public class KafkaPartitionsService {
             countPartition++;
         }
 
-        return countPartition;
+        return ResponseEntity.status(HttpStatus.OK)
+				.body(countPartition);
     }
     
     /**
@@ -127,8 +144,13 @@ public class KafkaPartitionsService {
      * @throws ExecutionException   Si ocurre un error durante la ejecución
      * @throws InterruptedException Si el hilo es interrumpido
      */
-    public Map<String, Object> getPartitionSearch(String topic, int partition) throws ExecutionException, InterruptedException {
-        // Describe el tópico y obtener su descripción
+    public ResponseEntity<Object> getPartitionSearch(String topic, int partition) throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
+    	// Describe el tópico y obtener su descripción
         DescribeTopicsResult topicsResult = adminClient.describeTopics(Collections.singletonList(topic));
         @SuppressWarnings("deprecation")
         TopicDescription topicDescription = topicsResult.all().get().get(topic);
@@ -177,11 +199,17 @@ public class KafkaPartitionsService {
         partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
         partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
 
-        return partitionInfoMap;
+        return ResponseEntity.status(HttpStatus.OK)
+				.body(partitionInfoMap);
     }
     
-    public List<Map<String, Object>> getAllPartitionDetails() throws ExecutionException, InterruptedException {
-        List<Map<String, Object>> allPartitionDetails = new ArrayList<>();
+    public ResponseEntity<Object> getAllPartitionDetails() throws ExecutionException, InterruptedException {
+    	if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
+    	List<Map<String, Object>> allPartitionDetails = new ArrayList<>();
         
         try {
             // Obtener la lista de todos los tópicos
@@ -239,6 +267,7 @@ public class KafkaPartitionsService {
             System.err.println("Error inesperado: " + e.getMessage());
         }
 
-        return allPartitionDetails;
+        return ResponseEntity.status(HttpStatus.OK)
+				.body(allPartitionDetails);
     }
 }
