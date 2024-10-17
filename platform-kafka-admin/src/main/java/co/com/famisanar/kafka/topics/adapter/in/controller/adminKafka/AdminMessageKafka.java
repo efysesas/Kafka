@@ -154,4 +154,22 @@ public class AdminMessageKafka {
         return ResponseEntity.ok(messages);
     }
     
+    @GetMapping("/topics/{topic}/messages")
+	@Operation(summary = "Lista mensajes por Topic", description = "Lista mensajes por Topic")
+	@ApiResponses(value = {
+			@ApiResponse(responseCode = "200", description = "OK", content = {
+					@Content(mediaType = "application/json") }),
+			@ApiResponse(responseCode = "400", description = "Solicitud inválida", content = {
+					@Content(mediaType = "application/json") }),
+			@ApiResponse(responseCode = "404", description = "Recurso no encontrado", content = {
+					@Content(mediaType = "application/json") }),
+			@ApiResponse(responseCode = "500", description = "Error interno del servidor", content = {
+					@Content(mediaType = "application/json") }) })
+    public List<Map<String, Object>> getMessagesTopic(
+    		@PathVariable String topic,
+            @RequestParam int offset,
+            @RequestParam int limit){
+        return iKafkaRelaunchMessage.getMessagesFromTopic(topic, offset, limit);
+    }
+    
 }

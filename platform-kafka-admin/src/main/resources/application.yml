@@ -8,8 +8,8 @@ spring:
   application:
     name: platform-kafka-admin
     
-  kafka:
-   bootstrap-servers: 20.85.127.35:9092
+  #kafka:
+   #bootstrap-servers: 20.85.127.35:9092
    
   jpa:
     hibernate.ddl-auto: none

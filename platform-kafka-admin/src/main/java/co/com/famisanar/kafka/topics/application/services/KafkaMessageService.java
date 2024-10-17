@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.internals.Topic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -74,6 +75,71 @@ public class KafkaMessageService implements IKafkaRelaunchMessage{
 	    }
 	}
 	
+	public List<Map<String, Object>> getMessagesFromTopic(String topic, int offset, int limit) {
+	    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+	            .withZone(ZoneId.systemDefault());
+
+	    try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
+
+	        // Obtener todas las particiones del topic
+	        List<TopicPartition> partitions = consumer.partitionsFor(topic)
+	                .stream()
+	                .map(info -> new TopicPartition(topic, info.partition()))
+	                .collect(Collectors.toList());
+
+	        // Asignar las particiones al consumidor
+	        consumer.assign(partitions);
+
+	        // Establecer el offset inicial para cada partición según el parámetro offset
+	        for (TopicPartition partition : partitions) {
+	            long beginningOffset = consumer.beginningOffsets(Collections.singletonList(partition)).get(partition);
+	            long startingOffset = Math.max(beginningOffset, offset);  // Asegurarse de no ir más allá del primer offset
+	            consumer.seek(partition, startingOffset);
+	        }
+
+	        // Crear una lista para almacenar todos los registros
+	        List<ConsumerRecord<String, String>> allRecords = new ArrayList<>();
+
+	        // Leer hasta alcanzar el límite o hasta que no haya más mensajes
+	        boolean moreMessages = true;
+	        while (moreMessages && allRecords.size() < limit) {
+	            ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(5));
+	            
+	            if (records.isEmpty()) {
+	                moreMessages = false;  // No hay más mensajes disponibles
+	            } else {
+	                for (ConsumerRecord<String, String> record : records) {
+	                    allRecords.add(record);
+	                    if (allRecords.size() >= limit) {
+	                        moreMessages = false;  // Hemos alcanzado el límite deseado
+	                        break;
+	                    }
+	                }
+	            }
+	        }
+
+	        // Cerrar el consumidor
+	        consumer.close();
+
+	        // Convertir los registros obtenidos en una lista de mapas con paginación
+	        return allRecords.stream()
+	                .map(record -> {
+	                    Map<String, Object> messageDetails = new HashMap<>();
+	                    messageDetails.put("key", record.key());
+	                    messageDetails.put("value", record.value());
+	                    messageDetails.put("timestamp", formatter.format(Instant.ofEpochMilli(record.timestamp())));
+	                    messageDetails.put("partition", record.partition());
+	                    messageDetails.put("offset", record.offset());
+	                    return messageDetails;
+	                })
+	                .collect(Collectors.toList());
+
+	    } catch (Exception e) {
+	        e.printStackTrace();  // Manejar excepciones
+	        return Collections.emptyList();  // Retornar una lista vacía en caso de error
+	    }
+	}
+
 	public List<ConsumerRecord<String, String>> getMessagesByDateRange(String topic, int partition, Instant startTime, Instant endTime) {
         Map<TopicPartition, Long> timestampsToSearch = new HashMap<>();
         TopicPartition topicPartition = new TopicPartition(topic, partition);
