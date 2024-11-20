@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import co.com.famisanar.kafka.topics.adapter.out.exceptions.RespuestaHttpHandler;
 import co.com.famisanar.kafka.topics.application.ports.in.IKafkaPartitions;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,9 +24,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class KafkaPartitionsService implements IKafkaPartitions{
 
 	@Autowired
@@ -33,6 +34,17 @@ public class KafkaPartitionsService implements IKafkaPartitions{
 	
 	@Autowired
 	RespuestaHttpHandler respuestaHttpHandler;
+	
+	private static final String LEADER_NODE_KEY = "LeaderNode";
+	private static final String REPLICA_NODES_KEY = "replicaNodes";
+	private static final String IN_SYNC_REPLICA_NODES_KEY = "inSyncReplicaNodes";
+	private static final String OFFLINE_REPLICA_NODES_KEY = "offlineReplicaNodes";
+	
+	private static final String PARTITION_NAME = "partitionName";
+	private static final String TOPIC_NAME = "topicName";
+	private static final String FIRST_OFFSET = "firstOffset";
+	private static final String LAST_OFFSET = "lastOffset";
+	private static final String SICE = "size";
 	
     /**
      * Obtiene los detalles de las particiones de un tópico de Kafka.
@@ -78,18 +90,18 @@ public class KafkaPartitionsService implements IKafkaPartitions{
 
             long size = lastOffset - firstOffset;
 
-            partitionInfoMap.put("partitionName", "partition-" + partition);
-            partitionInfoMap.put("topicName", topic);
-            partitionInfoMap.put("firstOffset", firstOffset);
-            partitionInfoMap.put("lastOffset", lastOffset);
-            partitionInfoMap.put("size", size);
+            partitionInfoMap.put(PARTITION_NAME, partition);
+            partitionInfoMap.put(TOPIC_NAME, topic);
+            partitionInfoMap.put(FIRST_OFFSET, firstOffset);
+            partitionInfoMap.put(LAST_OFFSET, lastOffset);
+            partitionInfoMap.put(SICE, size);
 
             // Obtener los nodos réplica y réplicas en sincronía
             List<Node> replicaNodes = partitionInfo.replicas();
             List<Node> inSyncReplicaNodes = partitionInfo.isr();
-
-            List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).collect(Collectors.toList());
-            List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).collect(Collectors.toList());
+            												
+            List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).toList();
+            List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).toList();
 
             // Calcular los nodos réplica fuera de línea
             List<Integer> offlineReplicaNodeIds = new ArrayList<>(replicaNodeIds);
@@ -98,10 +110,10 @@ public class KafkaPartitionsService implements IKafkaPartitions{
             // Obtener el líder de la partición
             Node leaderNode = partitionInfo.leader();
 
-            partitionInfoMap.put("leaderNode", leaderNode.id());
-            partitionInfoMap.put("replicaNodes", replicaNodeIds);
-            partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
-            partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
+            partitionInfoMap.put(LEADER_NODE_KEY, leaderNode.id());
+            partitionInfoMap.put(REPLICA_NODES_KEY, replicaNodeIds);
+            partitionInfoMap.put(IN_SYNC_REPLICA_NODES_KEY, inSyncReplicaNodeIds);
+            partitionInfoMap.put(OFFLINE_REPLICA_NODES_KEY, offlineReplicaNodeIds);
 
             // Agregar la información de la partición a la lista de detalles
             partitionDetailsList.add(partitionInfoMap);
@@ -174,18 +186,18 @@ public class KafkaPartitionsService implements IKafkaPartitions{
 
         // Crear un mapa para contener toda la información de la partición
         Map<String, Object> partitionInfoMap = new HashMap<>();
-        partitionInfoMap.put("partitionName", "partition-" + partition);
-        partitionInfoMap.put("topicName", topic);
-        partitionInfoMap.put("firstOffset", firstOffset);
-        partitionInfoMap.put("lastOffset", lastOffset);
-        partitionInfoMap.put("size", size);
+        partitionInfoMap.put(PARTITION_NAME, partition);
+        partitionInfoMap.put(TOPIC_NAME, topic);
+        partitionInfoMap.put(FIRST_OFFSET, firstOffset);
+        partitionInfoMap.put(LAST_OFFSET, lastOffset);
+        partitionInfoMap.put(SICE, size);
 
         // Obtener los nodos réplica y réplicas en sincronía
         List<Node> replicaNodes = topicDescription.partitions().get(partition).replicas();
         List<Node> inSyncReplicaNodes = topicDescription.partitions().get(partition).isr();
 
-        List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).collect(Collectors.toList());
-        List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).collect(Collectors.toList());
+        List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).toList();
+        List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).toList();
 
         // Calcular los nodos réplica fuera de línea
         List<Integer> offlineReplicaNodeIds = new ArrayList<>(replicaNodeIds);
@@ -194,10 +206,10 @@ public class KafkaPartitionsService implements IKafkaPartitions{
         // Obtener el líder de la partición
         Node leaderNode = topicDescription.partitions().get(partition).leader();
 
-        partitionInfoMap.put("leaderNode", leaderNode.id());
-        partitionInfoMap.put("replicaNodes", replicaNodeIds);
-        partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
-        partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
+        partitionInfoMap.put(LEADER_NODE_KEY, leaderNode.id());
+        partitionInfoMap.put(REPLICA_NODES_KEY, replicaNodeIds);
+        partitionInfoMap.put(IN_SYNC_REPLICA_NODES_KEY, inSyncReplicaNodeIds);
+        partitionInfoMap.put(OFFLINE_REPLICA_NODES_KEY, offlineReplicaNodeIds);
 
         return ResponseEntity.status(HttpStatus.OK)
 				.body(partitionInfoMap);
@@ -239,33 +251,38 @@ public class KafkaPartitionsService implements IKafkaPartitions{
                     List<Node> replicaNodes = partitionInfo.replicas();
                     List<Node> inSyncReplicaNodes = partitionInfo.isr();
 
-                    List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).collect(Collectors.toList());
-                    List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).collect(Collectors.toList());
+                    List<Integer> replicaNodeIds = replicaNodes.stream().map(Node::id).toList();
+                    List<Integer> inSyncReplicaNodeIds = inSyncReplicaNodes.stream().map(Node::id).toList();
                     List<Integer> offlineReplicaNodeIds = new ArrayList<>(replicaNodeIds);
                     offlineReplicaNodeIds.removeAll(inSyncReplicaNodeIds);
 
                     Node leaderNode = partitionInfo.leader();
 
-                    partitionInfoMap.put("partitionName", "partition-" + partition);
-                    partitionInfoMap.put("topicName", topic);
-                    partitionInfoMap.put("firstOffset", firstOffset);
-                    partitionInfoMap.put("lastOffset", lastOffset);
-                    partitionInfoMap.put("size", size);
-                    partitionInfoMap.put("leaderNode", leaderNode.id());
-                    partitionInfoMap.put("replicaNodes", replicaNodeIds);
-                    partitionInfoMap.put("inSyncReplicaNodes", inSyncReplicaNodeIds);
-                    partitionInfoMap.put("offlineReplicaNodes", offlineReplicaNodeIds);
+                    partitionInfoMap.put(PARTITION_NAME, partition);
+                    partitionInfoMap.put(TOPIC_NAME, topic);
+                    partitionInfoMap.put(FIRST_OFFSET, firstOffset);
+                    partitionInfoMap.put(LAST_OFFSET, lastOffset);
+                    partitionInfoMap.put(SICE, size);
+                    partitionInfoMap.put(LEADER_NODE_KEY, leaderNode.id());
+                    partitionInfoMap.put(REPLICA_NODES_KEY, replicaNodeIds);
+                    partitionInfoMap.put(IN_SYNC_REPLICA_NODES_KEY, inSyncReplicaNodeIds);
+                    partitionInfoMap.put(OFFLINE_REPLICA_NODES_KEY, offlineReplicaNodeIds);
 
                     allPartitionDetails.add(partitionInfoMap);
                 }
             }
-        } catch (TimeoutException e) {
-            System.err.println("Error: El nodo Kafka no está disponible. Verifique la conexión al broker.");
-        } catch (ExecutionException e) {
-            System.err.println("Error: No se pudo ejecutar la consulta a Kafka. Verifique la configuración del cliente Kafka.");
-        } catch (Exception e) {
-            System.err.println("Error inesperado: " + e.getMessage());
-        }
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			log.info("Error: El hilo fue interrumpido durante la ejecución.");
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("El hilo fue interrumpido.");
+		} catch (TimeoutException e) {
+			log.info("Error: El nodo Kafka no está disponible. Verifique la conexión al broker.");
+		} catch (ExecutionException e) {
+			log.info(
+					"Error: No se pudo ejecutar la consulta a Kafka. Verifique la configuración del cliente Kafka.");
+		} catch (Exception e) {
+			log.info("Error inesperado: " + e.getMessage());
+		}
 
         return ResponseEntity.status(HttpStatus.OK)
 				.body(allPartitionDetails);
