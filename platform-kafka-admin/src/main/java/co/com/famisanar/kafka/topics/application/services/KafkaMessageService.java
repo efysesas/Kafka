@@ -100,6 +100,7 @@ public class KafkaMessageService implements IKafkaRelaunchMessage{
 	            
 	            if (records.isEmpty()) {
 	                moreMessages = false;
+
 	            } else {
 	                for (ConsumerRecord<String, String> record : records) {
 	                    allRecords.add(record);
@@ -247,6 +248,7 @@ public class KafkaMessageService implements IKafkaRelaunchMessage{
                         partitions.add(new TopicPartition(topic, partitionInfo.partition())));
 
                 for (TopicPartition partition : partitions) {
+
                     consumer.assign(Collections.singletonList(partition));
                     consumer.seekToBeginning(Collections.singletonList(partition));
 
@@ -326,5 +328,4 @@ public class KafkaMessageService implements IKafkaRelaunchMessage{
         return Collections.emptyList();
     }
 }
-	
 }

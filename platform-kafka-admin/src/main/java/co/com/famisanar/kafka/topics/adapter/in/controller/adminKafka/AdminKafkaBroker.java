@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import co.com.famisanar.kafka.shared.annotations.CustomRestController;
 import co.com.famisanar.kafka.topics.application.ports.in.IKafkaChangeKafka;
+import co.com.famisanar.kafka.topics.application.services.KafkaBrokerChange;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,6 +19,9 @@ public class AdminKafkaBroker {
 		
 	@Autowired
 	IKafkaChangeKafka iKafkaChangeKafka;
+	
+	@Autowired
+	KafkaBrokerChange kafkaBrokerChange;
 	
 	@GetMapping("/connect/{broker}")
 	@Operation(summary = "Conexion a broker de kafka", description = "Conexion a broker de kafka")

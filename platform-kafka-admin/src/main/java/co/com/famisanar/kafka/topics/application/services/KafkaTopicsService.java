@@ -15,6 +15,7 @@ import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.ListConsumerGroupsResult;
 import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.KafkaFuture;
@@ -41,6 +42,30 @@ public class KafkaTopicsService implements IKafkaTopics{
 	@Autowired
 	RespuestaHttpHandler respuestaHttpHandler;
 
+	public ResponseEntity<Object> createTopic(String topicName, int numPartitions, short replicationFactor) {
+		if (respuestaHttpHandler.validateAdminClient() != null) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(respuestaHttpHandler.validateAdminClient());
+	    }
+    	AdminClient adminClient = kafkaBrokerChange.adminClient;
+		try {
+
+            NewTopic newTopic = new NewTopic(topicName, numPartitions, replicationFactor);
+
+            Set<String> existingTopics = adminClient.listTopics().names().get();
+            if (existingTopics.contains(topicName)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body("El topic '" + topicName + "' ya existe.");
+            }
+            
+            adminClient.createTopics(Collections.singletonList(newTopic)).all().get();
+
+            return ResponseEntity.ok("Topic creado exitosamente: " + topicName);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error al crear el topic: " + e.getMessage());
+        }
+    }
     
     public ResponseEntity<Object> getTopicDetails() throws ExecutionException, InterruptedException {
     	if (respuestaHttpHandler.validateAdminClient() != null) {
@@ -48,25 +73,20 @@ public class KafkaTopicsService implements IKafkaTopics{
 					.body(respuestaHttpHandler.validateAdminClient());
 	    }
     	AdminClient adminClient = kafkaBrokerChange.adminClient;
-    	// Obtener la lista de nombres de tópicos
             ListTopicsResult listTopicsResult = adminClient.listTopics();
             Set<String> topicNames = listTopicsResult.names().get();
 
-            // Obtener detalles de los tópicos
             DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(topicNames);
             @SuppressWarnings("deprecation")
 			Map<String, TopicDescription> topicDescriptions = describeTopicsResult.all().get();
 
-            // Obtener los grupos de consumidores
             ListConsumerGroupsResult consumerGroupsResult = adminClient.listConsumerGroups();
             Set<String> consumerGroups = consumerGroupsResult.all().get().stream()
                 .map(cg -> cg.groupId())
                 .collect(Collectors.toSet());
 
-            // Obtener la descripción de los grupos de consumidores
             Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient.describeConsumerGroups(consumerGroups).all().get();
 
-            // Obtener offsets para contar los mensajes
             Map<TopicPartition, OffsetSpec> topicPartitionOffsetSpecs = new HashMap<>();
             for (String topicName : topicNames) {
                 TopicDescription topicDescription = topicDescriptions.get(topicName);
@@ -75,10 +95,8 @@ public class KafkaTopicsService implements IKafkaTopics{
                 }
             }
 
-            // Obtener los offsets más recientes
             Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> latestOffsets = adminClient.listOffsets(topicPartitionOffsetSpecs).all().get();
 
-            // Mapear los detalles de los tópicos y consumidores
             Map<String, Map<String, Object>> topicDetailsMap = new HashMap<>();
             List<Map<String, Object>> topicDetailsList = null;
             for (String topicName : topicNames) {
@@ -91,13 +109,12 @@ public class KafkaTopicsService implements IKafkaTopics{
                 	        .anyMatch(tp -> tp.topic().equals(topicName)))
                 	    .map(cg -> {
                 	        Map<String, Object> consumerInfo = new HashMap<>();
-                	        consumerInfo.put("consumerGroup", cg.groupId()); // Nombre del grupo de consumidores
-                	        consumerInfo.put("threadCount", cg.members().size()); // Número de hilos (consumidores) activos en este grupo
+                	        consumerInfo.put("consumerGroup", cg.groupId());
+                	        consumerInfo.put("threadCount", cg.members().size());
                 	        return consumerInfo;
                 	    })
                 	    .collect(Collectors.toSet());
 
-                // Calcular el total de mensajes
                 long totalMessages = 0;
                 for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
                     TopicPartition partition = new TopicPartition(topicName, partitionInfo.partition());
@@ -109,9 +126,9 @@ public class KafkaTopicsService implements IKafkaTopics{
 
                 Map<String, Object> details = new HashMap<>();
                 details.put("topicName",topicName);
-                details.put("totalPartitions", topicDescription.partitions().size()); // Total de particiones
-                details.put("consumers", consumers); // Consumidores asociados
-                details.put("totalMessages", totalMessages); // Total de mensajes
+                details.put("totalPartitions", topicDescription.partitions().size());
+                details.put("consumers", consumers);
+                details.put("totalMessages", totalMessages);
 
                 topicDetailsMap.put(topicName, details);
                 
@@ -133,11 +150,9 @@ public class KafkaTopicsService implements IKafkaTopics{
 					.body(respuestaHttpHandler.validateAdminClient());
 	    }
     	AdminClient adminClient = kafkaBrokerChange.adminClient;
-     // Obtener la descripción de los topics
         DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(topicNames);
         Map<String, KafkaFuture<TopicDescription>> topicNameValues = describeTopicsResult.topicNameValues();
         
-        // Obtener la lista de particiones y sus offsets
         Map<TopicPartition, Long> latestOffsets = new HashMap<>();
         Map<TopicPartition, Long> earliestOffsets = new HashMap<>();
         for (String topicName : topicNames) {
@@ -203,30 +218,24 @@ public class KafkaTopicsService implements IKafkaTopics{
 					.body(respuestaHttpHandler.validateAdminClient());
 	    }
     	AdminClient adminClient = kafkaBrokerChange.adminClient;
-        // Obtener la lista de nombres de tópicos
         ListTopicsResult listTopicsResult = adminClient.listTopics();
         Set<String> topicNames = listTopicsResult.names().get();
 
-        // Filtrar tópicos que contengan el término de búsqueda
         Set<String> filteredTopicNames = topicNames.stream()
                 .filter(topicName -> topicName.contains(searchTerm))
                 .collect(Collectors.toSet());
 
-        // Obtener detalles de los tópicos filtrados
         DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(filteredTopicNames);
         @SuppressWarnings("deprecation")
 		Map<String, TopicDescription> topicDescriptions = describeTopicsResult.all().get();
 
-        // Obtener los grupos de consumidores
         ListConsumerGroupsResult consumerGroupsResult = adminClient.listConsumerGroups();
         Set<String> consumerGroups = consumerGroupsResult.all().get().stream()
                 .map(cg -> cg.groupId())
                 .collect(Collectors.toSet());
 
-        // Obtener la descripción de los grupos de consumidores
         Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient.describeConsumerGroups(consumerGroups).all().get();
 
-        // Obtener offsets para contar los mensajes
         Map<TopicPartition, OffsetSpec> topicPartitionOffsetSpecs = new HashMap<>();
         for (String topicName : filteredTopicNames) {
             TopicDescription topicDescription = topicDescriptions.get(topicName);
@@ -235,10 +244,8 @@ public class KafkaTopicsService implements IKafkaTopics{
             }
         }
 
-        // Obtener los offsets más recientes
         Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> latestOffsets = adminClient.listOffsets(topicPartitionOffsetSpecs).all().get();
 
-        // Mapear los detalles de los tópicos y consumidores
         List<Map<String, Object>> topicDetailsList = new ArrayList<>();
         for (String topicName : filteredTopicNames) {
             TopicDescription topicDescription = topicDescriptions.get(topicName);
@@ -249,7 +256,6 @@ public class KafkaTopicsService implements IKafkaTopics{
                     .map(tp -> tp.topic())
                     .collect(Collectors.toSet());
 
-            // Calcular el total de mensajes
             long totalMessages = 0;
             for (TopicPartitionInfo partitionInfo : topicDescription.partitions()) {
                 TopicPartition partition = new TopicPartition(topicName, partitionInfo.partition());
@@ -261,14 +267,13 @@ public class KafkaTopicsService implements IKafkaTopics{
 
             Map<String, Object> details = new HashMap<>();
             details.put("topicName", topicName);
-            details.put("totalPartitions", topicDescription.partitions().size()); // Total de particiones
-            details.put("consumers", consumers); // Consumidores asociados
-            details.put("totalMessages", totalMessages); // Total de mensajes
+            details.put("totalPartitions", topicDescription.partitions().size());
+            details.put("consumers", consumers);
+            details.put("totalMessages", totalMessages);
 
             topicDetailsList.add(details);
         }
 
-        // Convertir la lista a JSON
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         return ResponseEntity.status(HttpStatus.OK)
 				.body(gson.toJson(topicDetailsList));
@@ -281,25 +286,19 @@ public class KafkaTopicsService implements IKafkaTopics{
 	    }
     	AdminClient adminClient = kafkaBrokerChange.adminClient;
     	
-    	// Crear una lista con el nombre del tópico que queremos describir
         List<String> topicNames = Collections.singletonList(topicName);
         
-        // Llamar a describeTopics con una lista de un solo tópico
         DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(topicNames);
         
-        // Obtener los resultados
         Map<String, KafkaFuture<TopicDescription>> topicNameValues = describeTopicsResult.topicNameValues();
         
-        // Crear un mapa para almacenar los detalles del tópico
         Map<String, Object> topicDescriptions = new HashMap<>();
         
-        // Obtener la descripción del tópico específico
         KafkaFuture<TopicDescription> topicDescriptionFuture = topicNameValues.get(topicName);
         
         if (topicDescriptionFuture != null) {
             TopicDescription topicDescription = topicDescriptionFuture.get();
             
-            // Obtener información sobre particiones
             List<TopicPartitionInfo> partitionInfos = topicDescription.partitions();
             List<Object> partitions = new ArrayList<>();
             
@@ -319,7 +318,7 @@ public class KafkaTopicsService implements IKafkaTopics{
                 partition.put("replicas", replicas);
                 
                 List<Object> isr = new ArrayList<>();
-                for (Node node : partitionInfo.isr()) { // Debe usar isr() en lugar de replicas() para ISR
+                for (Node node : partitionInfo.isr()) {
                     Map<String, Object> isrNode = new HashMap<>();
                     isrNode.put("id", node.id());
                     isrNode.put("host", node.host());

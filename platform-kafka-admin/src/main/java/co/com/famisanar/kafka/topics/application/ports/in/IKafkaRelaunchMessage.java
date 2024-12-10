@@ -19,5 +19,5 @@ public interface IKafkaRelaunchMessage {
 	public boolean reSend(LogMessageChange logMessageChange);
 	public List<ConsumerRecord<String, String>> searchMessagesById(String messageId);
 	public List<Map<String, Object>> getMessagesBeforeOffset(String topic, int partition, int targetOffset, int limit);
-	
+
 }

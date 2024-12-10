@@ -76,16 +76,20 @@ public class KafkaConsumersService implements IKafkaConsumers{
 		ListConsumerGroupsResult groupsResult = adminClient.listConsumerGroups();
 
 		List<ConsumerGroupListing> groupListings = (List<ConsumerGroupListing>) groupsResult.all().get();
+
 		Set<String> consumerGroupIds = groupListings.stream()
 				.filter(groupListing -> groupListing.groupId().contains(searchTerm)).map(ConsumerGroupListing::groupId)
 				.collect(Collectors.toSet());
 
 		Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient
+
 				.describeConsumerGroups(consumerGroupIds).all().get();
 
 		List<Map<String, Object>> consumerGroupDetailsList = consumerGroupDescriptions.entrySet().stream()
 				.map(entry -> {
+
 					Map<String, Object> details = new HashMap<>();
+
 					ConsumerGroupDescription description = entry.getValue();
 
 					List<String> consumerIds = description.members().stream().map(member -> member.consumerId())																			// consumidor
@@ -93,6 +97,7 @@ public class KafkaConsumersService implements IKafkaConsumers{
 					details.put("consumerIds", consumerIds);
 
 					Set<String> topics = description.members().stream()
+
 							.flatMap(member -> member.assignment().topicPartitions().stream())
 							.map(TopicPartition::topic).collect(Collectors.toSet());
 					details.put("topics", topics);
@@ -122,6 +127,7 @@ public class KafkaConsumersService implements IKafkaConsumers{
 				.collect(Collectors.toSet());
 
 		Map<String, ConsumerGroupDescription> consumerGroupDescriptions = adminClient
+
 				.describeConsumerGroups(consumerGroups).all().get();
 
 		List<Map<String, Object>> consumerDetailsList = consumerGroupDescriptions.entrySet().stream().map(entry -> {
@@ -129,6 +135,7 @@ public class KafkaConsumersService implements IKafkaConsumers{
 			ConsumerGroupDescription description = entry.getValue();
 
 			long topicCount = description.members().stream()
+
 					.flatMap(member -> member.assignment().topicPartitions().stream()).map(TopicPartition::topic)
 					.distinct().count();
 
@@ -136,6 +143,7 @@ public class KafkaConsumersService implements IKafkaConsumers{
 			details.put("topicCount", (int) topicCount);
 			details.put("active", !description.members().isEmpty());
 			details.put("memberCount", description.members().size());
+
 
 			return details;
 		}).collect(Collectors.toList());
@@ -168,6 +176,7 @@ public class KafkaConsumersService implements IKafkaConsumers{
 				.collect(Collectors.toList())) {
 
 			@SuppressWarnings("deprecation")
+
 			TopicDescription topicDescription = adminClient.describeTopics(Collections.singletonList(topic)).all().get()
 					.get(topic);
 			if (topicDescription == null)
@@ -177,11 +186,13 @@ public class KafkaConsumersService implements IKafkaConsumers{
 			long totalMessages = getTotalMessagesForTopic(topic,adminClient);
 
 			Map<String, Object> topicDetails = new HashMap<>();
+
 			topicDetails.put("totalPartitions", totalPartitions);
 			topicDetails.put("totalMessages", totalMessages);
 			topicDetails.put("topicName", topic);
 
 			List<Map<String, Object>> consumers = new ArrayList<>();
+
 			for (ConsumerGroupDescription groupDescription : consumerGroupDescriptions.values()) {
 				if (groupDescription.members().stream().anyMatch(member -> member.assignment().topicPartitions()
 						.stream().anyMatch(tp -> tp.topic().equals(topic)))) {
@@ -206,6 +217,7 @@ public class KafkaConsumersService implements IKafkaConsumers{
 				.get().get(topic).partitions();
 
 		long totalMessages = 0;
+
 		for (TopicPartitionInfo partitionInfo : partitionInfos) {
 			int partitionId = partitionInfo.partition();
 			TopicPartition topicPartition = new TopicPartition(topic, partitionId);
@@ -214,6 +226,7 @@ public class KafkaConsumersService implements IKafkaConsumers{
 			long endOffset = adminClient.listOffsets(Collections.singletonMap(topicPartition, OffsetSpec.latest()))
 					.all().get().get(topicPartition).offset();
 			totalMessages += endOffset;
+
 		}
 
 		return totalMessages;

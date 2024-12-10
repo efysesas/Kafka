@@ -26,6 +26,7 @@ public class KafkaBrokerChange implements IKafkaChangeKafka{
             this.adminClient = null;
             return "{\"status\":\"error\",\"message\":\"No se pudo conectar al broker " + brokerAddress + "\"}";
         }
+        
     }
     
     public void close() {
