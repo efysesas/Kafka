@@ -1,0 +1,4 @@
+{
+    "sonarQubeUri": "http://172.206.2.98:9000",
+    "projectKey": "kafka-monitoring"
+}

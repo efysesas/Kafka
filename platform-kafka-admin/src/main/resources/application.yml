@@ -1,0 +1,22 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /platform-kafka-admin
+  cors: '*'
+
+spring:
+  application:
+    name: platform-kafka-admin
+    
+  #kafka:
+   #bootstrap-servers: 20.85.127.35:9092
+   
+  jpa:
+    hibernate.ddl-auto: none
+    database: oracle
+    database-platform: org.hibernate.dialect.OracleDialect
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+    url: jdbc:oracle:thin:@//172.31.2.5:1521/FAMIDESA
+    username: SEI
+    password: seidesa2011
